@@ -1,0 +1,28 @@
+@import "tailwindcss";
+
+@layer utilities {
+  /* Hide scrollbar for clean UI in tabs */
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
+
+@media print {
+  body {
+    background-color: #ffffff !important;
+    color: #111827 !important;
+  }
+  header, nav, button, aside, .print\:hidden {
+    display: none !important;
+  }
+  .print\:border-none {
+    border: none !important;
+  }
+  .print\:text-black {
+    color: #000000 !important;
+  }
+}

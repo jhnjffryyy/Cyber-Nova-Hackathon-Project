@@ -1,0 +1,11 @@
+export type DocType = 'lecture_notes' | 'slides_or_script' | 'technical_spec' | 'problem_set' | 'reading_or_article' | 'other';
+
+export const DEFAULT_SECTIONS = ['Overview', 'Key Terms', 'Main Points', 'Key Facts or Lists', 'Quick Q&A'];
+export const TYPE_MAP: Record<DocType, string[]> = {
+  lecture_notes: ['Overview', 'Key Terms', 'Main Points', 'Formulas / Steps', 'Quick Q&A'],
+  slides_or_script: ['Overview', 'Key Terms', 'Slide Points', 'Quick Q&A'],
+  technical_spec: ['Overview', 'Key Terms', 'Requirements / Specs', 'Formulas / Steps', 'Quick Q&A'],
+  problem_set: ['Overview', 'Key Terms', 'Problem Types', 'Formulas / Steps', 'Quick Q&A'],
+  reading_or_article: ['Overview', 'Key Terms', 'Main Points', 'Quick Q&A'],
+  other: DEFAULT_SECTIONS,
+};
