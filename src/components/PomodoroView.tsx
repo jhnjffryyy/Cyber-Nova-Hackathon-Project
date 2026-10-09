@@ -1,13 +1,31 @@
 import React from 'react';
-import { Timer, Play, Pause, RotateCcw, SkipForward, Bell, BellOff } from 'lucide-react';
+import { useReducedMotion } from 'motion/react';
+import { Play, Pause, RotateCcw, SkipForward, Bell, BellOff } from 'lucide-react';
 import { usePomodoro } from '../lib/usePomodoro';
 import { MODE_LABELS, PomodoroMode, durationSeconds, formatTime } from '../lib/pomodoro';
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  Field,
+  Input,
+  PageHeader,
+  SegmentedControl,
+} from './ui';
 
 interface PomodoroViewProps {
   pomodoro: ReturnType<typeof usePomodoro>;
 }
 
+const STATUS_LABELS: Record<string, string> = {
+  running: 'Running',
+  paused: 'Paused',
+  idle: 'Ready',
+};
+
 export const PomodoroView: React.FC<PomodoroViewProps> = ({ pomodoro }) => {
+  const reduced = useReducedMotion();
   const {
     mode,
     status,
@@ -27,8 +45,10 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({ pomodoro }) => {
 
   const total = durationSeconds(mode, settings);
   const progress = total > 0 ? 1 - remainingSec / total : 0;
-  const R = 90;
+  const SIZE = 260;
+  const R = 120;
   const CIRC = 2 * Math.PI * R;
+  const stroke = mode === 'focus' ? 'var(--accent)' : 'var(--info)';
 
   const untilLong =
     settings.longBreakInterval - (completedFocus % settings.longBreakInterval);
@@ -43,172 +63,149 @@ export const PomodoroView: React.FC<PomodoroViewProps> = ({ pomodoro }) => {
     label: string,
     key: 'focusMinutes' | 'shortBreakMinutes' | 'longBreakMinutes' | 'longBreakInterval',
     min: number,
-    max: number
+    max: number,
+    unit: string
   ) => (
-    <div>
-      <label className="text-xs font-bold text-gray-700 block mb-1">{label}</label>
-      <input
+    <Field label={label} htmlFor={`pom-${key}`} hint={`${min}–${max} ${unit}`}>
+      <Input
+        id={`pom-${key}`}
         type="number"
         min={min}
         max={max}
         step={1}
         value={settings[key]}
         onChange={(e) => updateSettings({ [key]: e.target.valueAsNumber })}
-        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
       />
-      <span className="text-[10px] text-gray-400">{min}-{max}</span>
-    </div>
+    </Field>
   );
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-          Pomodoro Timer
-        </h1>
-        <p className="text-xs text-gray-500 mt-1">
-          Focus in short bursts with breaks. The timer keeps running while you use other tabs.
-        </p>
-      </div>
+    <div>
+      <PageHeader
+        title="Pomodoro"
+        description="Focus in short sessions with regular breaks. The timer keeps running while you use other pages."
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-        {/* Timer Card */}
-        <div className="lg:col-span-7 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-5">
-          {/* Mode tabs */}
-          <div className="flex items-center gap-1 bg-gray-50 p-1 rounded-xl border border-gray-200 w-fit">
-            {(['focus', 'short', 'long'] as PomodoroMode[]).map((m) => (
-              <button
-                key={m}
-                onClick={() => switchMode(m)}
-                className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-colors ${
-                  mode === m
-                    ? 'bg-white text-gray-900 shadow-2xs'
-                    : 'text-gray-500 hover:text-gray-800'
-                }`}
-              >
-                {MODE_LABELS[m]}
-              </button>
-            ))}
-          </div>
+      <div className="grid gap-6 lg:grid-cols-12 items-start">
+        {/* Timer card */}
+        <Card padding="lg" className="lg:col-span-7">
+          <div className="flex flex-col items-center">
+            <SegmentedControl
+              ariaLabel="Timer mode"
+              value={mode}
+              onChange={(m) => switchMode(m as PomodoroMode)}
+              options={[
+                { value: 'focus', label: 'Focus' },
+                { value: 'short', label: 'Short break' },
+                { value: 'long', label: 'Long break' },
+              ]}
+            />
 
-          {/* Progress ring */}
-          <div className="flex flex-col items-center py-2">
-            <div className="relative">
-              <svg width="220" height="220" viewBox="0 0 220 220">
+            <div className="relative my-6">
+              <svg width={SIZE} height={SIZE} viewBox={`0 0 ${SIZE} ${SIZE}`}>
                 <circle
-                  cx="110"
-                  cy="110"
+                  cx={SIZE / 2}
+                  cy={SIZE / 2}
                   r={R}
                   fill="none"
-                  stroke="#e5e7eb"
-                  strokeWidth="12"
+                  stroke="var(--subtle)"
+                  strokeWidth="10"
                 />
                 <circle
-                  cx="110"
-                  cy="110"
+                  cx={SIZE / 2}
+                  cy={SIZE / 2}
                   r={R}
                   fill="none"
-                  stroke={mode === 'focus' ? '#065f46' : '#0d9488'}
-                  strokeWidth="12"
+                  stroke={stroke}
+                  strokeWidth="10"
                   strokeLinecap="round"
                   strokeDasharray={CIRC}
                   strokeDashoffset={CIRC * (1 - progress)}
-                  transform="rotate(-90 110 110)"
-                  className="transition-all duration-300"
+                  transform={`rotate(-90 ${SIZE / 2} ${SIZE / 2})`}
+                  style={{
+                    transition: reduced ? 'none' : 'stroke-dashoffset 1s linear',
+                  }}
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-4xl font-black text-gray-900 tabular-nums">
+                <span className="font-display text-6xl font-semibold tabular-nums text-ink">
                   {formatTime(remainingSec)}
                 </span>
-                <span className="text-xs font-bold text-gray-500 mt-1">
-                  {MODE_LABELS[mode]}
+                <span className="text-[13px] text-ink-3 mt-1.5">
+                  {STATUS_LABELS[status] || status} · {MODE_LABELS[mode]}
                 </span>
               </div>
             </div>
-          </div>
 
-          {/* Controls */}
-          <div className="flex items-center justify-center gap-2">
-            <button
-              onClick={primaryAction}
-              className="px-6 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-colors"
-            >
-              <PrimaryIcon className="w-3.5 h-3.5" />
-              {primaryLabel}
-            </button>
-            <button
-              onClick={reset}
-              className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              Reset
-            </button>
-            <button
-              onClick={skip}
-              className="px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
-            >
-              <SkipForward className="w-3.5 h-3.5" />
-              Skip
-            </button>
-          </div>
+            <div className="flex items-center justify-center gap-2 flex-wrap">
+              <Button size="lg" icon={PrimaryIcon} onClick={primaryAction}>
+                {primaryLabel}
+              </Button>
+              <Button size="lg" variant="secondary" icon={RotateCcw} onClick={reset}>
+                Reset
+              </Button>
+              <Button size="lg" variant="ghost" icon={SkipForward} onClick={skip}>
+                Skip
+              </Button>
+            </div>
 
-          <div className="flex items-center justify-between text-xs text-gray-500 pt-2 border-t border-gray-100">
-            <span>
-              Completed focus sessions: <strong className="text-gray-800">{completedFocus}</strong>
-            </span>
-            <span>
-              Long break after <strong className="text-gray-800">{untilLong}</strong> more
-            </span>
+            <p className="text-[13px] text-ink-3 text-center mt-5">
+              {completedFocus} focus session{completedFocus === 1 ? '' : 's'} completed
+              since the app opened · Long break after {untilLong} more
+            </p>
           </div>
+        </Card>
 
-          {/* Notification status */}
-          <div className="flex items-center justify-between text-xs pt-1">
-            {notificationPermission === 'granted' ? (
-              <span className="flex items-center gap-1.5 text-gray-500">
-                <Bell className="w-3.5 h-3.5 text-emerald-600" />
-                Desktop notifications enabled
-              </span>
-            ) : notificationPermission === 'denied' ? (
-              <span className="flex items-center gap-1.5 text-gray-400">
-                <BellOff className="w-3.5 h-3.5" />
-                Notifications are blocked in your browser settings. You will still see in-app alerts.
-              </span>
-            ) : (
-              <>
-                <span className="flex items-center gap-1.5 text-gray-500">
-                  <Bell className="w-3.5 h-3.5 text-gray-400" />
-                  Get notified when a session ends
-                </span>
-                <button
-                  onClick={requestNotificationPermission}
-                  className="text-xs font-bold text-emerald-700 hover:text-emerald-800"
-                >
-                  Enable notifications
-                </button>
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* Settings Card */}
-        <div className="lg:col-span-5 bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4 h-fit">
-          <div className="flex items-center gap-2">
-            <Timer className="w-4 h-4 text-emerald-600" />
-            <h2 className="font-black text-sm text-gray-900">Timer settings</h2>
-          </div>
+        {/* Settings card */}
+        <Card className="lg:col-span-5">
+          <CardHeader title="Timer settings" />
           <div className="grid grid-cols-2 gap-3">
-            {settingField('Focus (min)', 'focusMinutes', 1, 120)}
-            {settingField('Short break (min)', 'shortBreakMinutes', 1, 30)}
-            {settingField('Long break (min)', 'longBreakMinutes', 1, 60)}
-            {settingField('Long break every', 'longBreakInterval', 2, 8)}
+            {settingField('Focus', 'focusMinutes', 1, 120, 'minutes')}
+            {settingField('Short break', 'shortBreakMinutes', 1, 30, 'minutes')}
+            {settingField('Long break', 'longBreakMinutes', 1, 60, 'minutes')}
+            {settingField('Long break every', 'longBreakInterval', 2, 8, 'sessions')}
           </div>
           {status !== 'idle' && (
-            <p className="text-[11px] text-amber-600 font-medium">
+            <p className="text-[13px] text-warning-ink mt-3">
               Changes apply to the next session.
             </p>
           )}
-        </div>
+
+          <div className="border-t border-line mt-5 pt-4">
+            {notificationPermission === 'granted' ? (
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-success" aria-hidden />
+                <span className="text-[13px] text-ink-2 flex-1">
+                  Desktop notifications
+                </span>
+                <Badge tone="success">Enabled</Badge>
+              </div>
+            ) : notificationPermission === 'denied' ? (
+              <div className="flex items-center gap-2">
+                <BellOff className="w-4 h-4 text-ink-3" aria-hidden />
+                <span className="text-[13px] text-ink-3 flex-1">
+                  Notifications are blocked in browser settings. You'll still see in-app
+                  alerts.
+                </span>
+                <Badge tone="neutral">Blocked</Badge>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <Bell className="w-4 h-4 text-ink-3" aria-hidden />
+                <span className="text-[13px] text-ink-2 flex-1">
+                  Get notified when a session ends
+                </span>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={requestNotificationPermission}
+                >
+                  Enable
+                </Button>
+              </div>
+            )}
+          </div>
+        </Card>
       </div>
     </div>
   );

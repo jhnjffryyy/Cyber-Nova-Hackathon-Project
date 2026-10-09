@@ -43,9 +43,7 @@ export const Modal: React.FC<ModalProps> = ({
     const t = window.setTimeout(() => {
       const panel = panelRef.current;
       if (!panel) return;
-      const first = panel.querySelector<HTMLElement>(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
-      );
+      const first = panel.querySelector<HTMLElement>('[data-autofocus], [autofocus]');
       (first || panel).focus();
     }, 0);
     return () => {
@@ -106,7 +104,7 @@ export const Modal: React.FC<ModalProps> = ({
             aria-labelledby={titleId}
             tabIndex={-1}
             className={cn(
-              'relative w-full bg-surface border border-line shadow-pop rounded-t-card sm:rounded-card max-h-[90dvh] overflow-y-auto',
+              'relative w-full bg-surface border border-line shadow-pop rounded-t-card sm:rounded-card max-h-[90dvh] overflow-y-auto focus:outline-none',
               SIZES[size]
             )}
             initial={{ opacity: 0, transform: 'translateY(8px) scale(0.98)' }}

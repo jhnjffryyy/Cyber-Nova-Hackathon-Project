@@ -182,7 +182,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         }
       />
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
+      <div className="space-y-6">
         {/* Week card */}
         <Card>
           {courses.length === 0 ? (
@@ -206,70 +206,77 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         </Card>
 
         {/* Assistant card */}
-        <Card className="xl:sticky xl:top-24">
+        <Card>
           <CardHeader
             title="Schedule assistant"
             icon={Sparkles}
             description="Runs locally on your device."
           />
-          <div
-            ref={listRef}
-            aria-live="polite"
-            className="max-h-80 overflow-y-auto space-y-2 mb-3"
-          >
-            {messages.map((m) => (
-              <div key={m.id} className={m.role === 'user' ? 'flex' : 'flex'}>
-                <div
-                  className={
-                    m.role === 'user'
-                      ? 'ml-auto w-fit max-w-[85%] bg-accent text-on-accent rounded-2xl rounded-br-md px-3.5 py-2 text-sm'
-                      : 'w-fit max-w-[85%] bg-subtle text-ink rounded-2xl rounded-bl-md px-3.5 py-2 text-sm'
-                  }
-                >
-                  <p>{m.text}</p>
-                  {m.addedCourseId && (
-                    <Button
-                      variant="danger-soft"
-                      size="sm"
-                      icon={Undo2}
-                      className="mt-1.5"
-                      onClick={() => handleUndo(m)}
-                    >
-                      Undo
-                    </Button>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="flex flex-wrap gap-1.5 mb-3">
-            {EXAMPLE_CHIPS.map((chip) => (
-              <button
-                key={chip}
-                type="button"
-                onClick={() => setInput(chip)}
-                className="h-7 px-3 rounded-full border border-line bg-surface text-xs text-ink-2 hover:bg-subtle transition-[background-color] duration-150"
+          <div className="grid lg:grid-cols-[minmax(0,1fr)_280px] gap-4">
+            <div>
+              <div
+                ref={listRef}
+                aria-live="polite"
+                className="max-h-80 overflow-y-auto space-y-2 mb-3"
               >
-                {chip}
-              </button>
-            ))}
-          </div>
+                {messages.map((m) => (
+                  <div key={m.id} className={m.role === 'user' ? 'flex' : 'flex'}>
+                    <div
+                      className={
+                        m.role === 'user'
+                          ? 'ml-auto w-fit max-w-[85%] bg-accent text-on-accent rounded-2xl rounded-br-md px-3.5 py-2 text-sm'
+                          : 'w-fit max-w-[85%] bg-subtle text-ink rounded-2xl rounded-bl-md px-3.5 py-2 text-sm'
+                      }
+                    >
+                      <p>{m.text}</p>
+                      {m.addedCourseId && (
+                        <Button
+                          variant="danger-soft"
+                          size="sm"
+                          icon={Undo2}
+                          className="mt-1.5"
+                          onClick={() => handleUndo(m)}
+                        >
+                          Undo
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
 
-          <div className="flex items-center gap-2">
-            <Input
-              type="text"
-              aria-label="Message the schedule assistant"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSend();
-              }}
-              placeholder="e.g. Add Web Development every Monday at 8 AM"
-            />
-            <Button icon={Send} onClick={handleSend} disabled={!input.trim()}>
-              Send
-            </Button>
+              <div className="flex items-center gap-2">
+                <Input
+                  type="text"
+                  aria-label="Message the schedule assistant"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSend();
+                  }}
+                  placeholder="e.g. Add Web Development every Monday at 8 AM"
+                />
+                <Button icon={Send} onClick={handleSend} disabled={!input.trim()}>
+                  Send
+                </Button>
+              </div>
+            </div>
+
+            <div>
+              <div className="text-xs font-medium text-ink-3 mb-1.5">Try</div>
+              <div className="flex flex-col items-start gap-1.5">
+                {EXAMPLE_CHIPS.map((chip) => (
+                  <button
+                    key={chip}
+                    type="button"
+                    onClick={() => setInput(chip)}
+                    className="h-7 px-3 rounded-full border border-line bg-surface text-xs text-ink-2 hover:bg-subtle transition-[background-color] duration-150"
+                  >
+                    {chip}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </Card>
       </div>

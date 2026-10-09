@@ -36,6 +36,7 @@ interface CardHeaderProps {
   icon?: LucideIcon;
   description?: string;
   action?: React.ReactNode;
+  className?: string;
 }
 
 export const CardHeader: React.FC<CardHeaderProps> = ({
@@ -43,11 +44,13 @@ export const CardHeader: React.FC<CardHeaderProps> = ({
   icon: Icon,
   description,
   action,
+  className,
 }) => (
   <div
     className={cn(
       'flex justify-between gap-3 mb-4',
-      description ? 'items-start' : 'items-center'
+      description ? 'items-start' : 'items-center',
+      className
     )}
   >
     <div className="min-w-0">

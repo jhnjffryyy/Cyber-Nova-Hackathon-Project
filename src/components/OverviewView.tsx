@@ -4,10 +4,10 @@ import { Cheatsheet, Course, Exam, ExamAttempt, Task } from '../types';
 import {
   courseOccursOn,
   formatShortDate,
-  formatTime12,
   getWeekDays,
   toISODate,
 } from '../lib/dates';
+import { formatTimeRange } from '../lib/format';
 import { useToday } from '../lib/useToday';
 import { usePomodoro } from '../lib/usePomodoro';
 import { MODE_LABELS, durationSeconds, formatTime } from '../lib/pomodoro';
@@ -245,9 +245,8 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
                       style={{ backgroundColor: course.color }}
                       aria-hidden
                     />
-                    <div className="w-20 text-[13px] tabular-nums text-ink-2 shrink-0">
-                      <div>{formatTime12(course.startTime)}</div>
-                      <div>{formatTime12(course.endTime)}</div>
+                    <div className="w-[6.5rem] text-[13px] tabular-nums text-ink-2 shrink-0 whitespace-nowrap">
+                      {formatTimeRange(course.startTime, course.endTime)}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-ink truncate">

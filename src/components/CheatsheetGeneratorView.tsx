@@ -280,6 +280,7 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
         <CardHeader
           title="Create Clutch Notes"
           description="Runs locally on your device — nothing is uploaded."
+          className={genOpen ? undefined : 'mb-0'}
           action={
             <IconButton
               icon={genOpen ? ChevronUp : ChevronDown}

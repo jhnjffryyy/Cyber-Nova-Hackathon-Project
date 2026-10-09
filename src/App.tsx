@@ -333,8 +333,14 @@ export default function App() {
                 {activeTab === 'history' && (
                   <HistoryView
                     attempts={attempts}
+                    exams={exams}
+                    cheatsheets={cheatsheets}
+                    searchQuery={searchQuery}
                     historyAttemptId={historyAttemptId}
                     onHistoryAttemptHandled={() => setHistoryAttemptId(null)}
+                    onRetake={retake}
+                    onOpenCheatsheet={openCheatsheet}
+                    onNavigateTab={setActiveTab}
                   />
                 )}
 

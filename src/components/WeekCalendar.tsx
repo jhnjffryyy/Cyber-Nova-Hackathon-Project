@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronLeft, ChevronRight, MapPin, Trash2 } from 'lucide-react';
 import { Course } from '../types';
 import { courseOccursOn, formatTime12, formatWeekRange, getWeekDays } from '../lib/dates';
+import { formatTimeRange } from '../lib/format';
 import { useToday } from '../lib/useToday';
 import { cn } from '../lib/cn';
 import { Badge, Button, IconButton } from './ui';
@@ -115,12 +116,13 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                       />
                       <div className="flex items-start justify-between gap-1">
                         <span className="text-xs text-ink-3 tabular-nums">
-                          {formatTime12(c.startTime)}
-                          {compact ? '' : ` – ${formatTime12(c.endTime)}`}
+                          {compact
+                            ? formatTime12(c.startTime)
+                            : formatTimeRange(c.startTime, c.endTime)}
                         </span>
                         {deleteButton(c)}
                       </div>
-                      <h4 className="text-[13px] font-medium text-ink line-clamp-2 mt-0.5">
+                      <h4 className="text-[13px] font-medium text-ink line-clamp-2 break-words mt-0.5">
                         {c.title}
                       </h4>
                       {!compact && (
@@ -182,9 +184,8 @@ export const WeekCalendar: React.FC<WeekCalendarProps> = ({
                         style={{ backgroundColor: c.color }}
                         aria-hidden
                       />
-                      <div className="w-16 text-[13px] tabular-nums text-ink-2 shrink-0">
-                        <div>{formatTime12(c.startTime)}</div>
-                        <div>{formatTime12(c.endTime)}</div>
+                      <div className="w-[6.5rem] text-[13px] tabular-nums text-ink-2 shrink-0 whitespace-nowrap">
+                        {formatTimeRange(c.startTime, c.endTime)}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-ink truncate">{c.title}</div>

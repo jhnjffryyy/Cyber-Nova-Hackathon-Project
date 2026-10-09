@@ -1,3 +1,5 @@
+import { formatTime12 } from './dates';
+
 export function formatDate(isoOrDate: string | Date): string {
   const d =
     typeof isoOrDate === 'string'
@@ -32,6 +34,15 @@ export function formatDueLabel(
     label: `Due ${d.toLocaleDateString(undefined, { weekday: 'short' })}, ${formatDate(dueIso).replace(/, \d{4}$/, '')}`,
     tone: 'neutral',
   };
+}
+
+export function formatTimeRange(start: string, end: string): string {
+  const s = formatTime12(start);
+  const e = formatTime12(end);
+  const sM = s.match(/^(\d+:\d{2})\s(AM|PM)$/);
+  const eM = e.match(/^(\d+:\d{2})\s(AM|PM)$/);
+  if (!sM || !eM) return `${s} – ${e}`;
+  return sM[2] === eM[2] ? `${sM[1]} – ${e}` : `${s} – ${e}`;
 }
 
 export function formatDuration(sec: number): string {

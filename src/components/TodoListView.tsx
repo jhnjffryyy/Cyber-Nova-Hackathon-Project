@@ -431,6 +431,7 @@ export const TodoListView: React.FC<TodoListViewProps> = ({
               id={`${formId}-title`}
               required
               autoFocus
+              data-autofocus
               placeholder="e.g. Finish physics lab report"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
