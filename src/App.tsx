@@ -191,7 +191,11 @@ export default function App() {
     <MotionConfig reducedMotion="user">
       <div className="min-h-dvh bg-canvas text-ink flex flex-col font-sans">
         <a
-          href="#main"
+          href={'#/' + activeTab}
+          onClick={(e) => {
+            e.preventDefault();
+            document.getElementById('main')?.focus();
+          }}
           className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:bg-surface focus:text-ink focus:px-3 focus:py-2 focus:rounded-control focus:border focus:border-line focus:shadow-pop"
         >
           Skip to content
@@ -258,7 +262,7 @@ export default function App() {
               onOpenDesktopModal={() => setIsDesktopModalOpen(true)}
             />
 
-            <main id="main" className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex-1">
+            <main id="main" tabIndex={-1} className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex-1 focus:outline-none">
               <div key={activeTab} className="view-enter">
                 {activeTab === 'overview' && (
                   <OverviewView
@@ -321,6 +325,8 @@ export default function App() {
                     searchQuery={searchQuery}
                     retakeExam={retakeExam}
                     onRetakeHandled={() => setRetakeExam(null)}
+                    onNavigateTab={setActiveTab}
+                    onOpenAttempt={openAttempt}
                   />
                 )}
 

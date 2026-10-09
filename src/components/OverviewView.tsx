@@ -202,7 +202,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
         }
       />
 
-      <div className="grid gap-4 lg:gap-6 lg:grid-cols-12">
+      <div className="grid gap-4 lg:gap-6 lg:grid-cols-12 items-start">
         {/* Today's classes */}
         <Card className="lg:col-span-7">
           <CardHeader
@@ -380,13 +380,13 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
               }
             />
           ) : (
-            <div>
+            <div className="divide-y divide-line">
               {recentAttempts.map((att) => (
                 <button
                   key={att.id}
                   type="button"
                   onClick={() => onOpenAttempt(att.id)}
-                  className="w-full flex items-center gap-3 py-2.5 border-b border-line last:border-0 text-left hover:bg-subtle/60 -mx-2 px-2 rounded-control transition-[background-color] duration-150"
+                  className="w-full flex items-center gap-3 -mx-2 px-2 py-3 rounded-control text-left hover:bg-subtle transition-[background-color] duration-150"
                 >
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-ink truncate">

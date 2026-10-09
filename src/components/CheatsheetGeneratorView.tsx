@@ -1,23 +1,40 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useReducedMotion } from 'motion/react';
 import {
-  FileText,
   Sparkles,
   Printer,
-  Bookmark,
   RefreshCw,
   Copy,
   Check,
-  FileCheck,
   Trash2,
-  BookOpen,
-  Image as ImageIcon,
-  Scan,
+  NotebookText,
+  ChevronDown,
+  ChevronUp,
+  Search,
+  Plus,
 } from 'lucide-react';
 import { Course, Cheatsheet } from '../types';
 import { qwenLLM } from '../lib/local-llm';
 import { extractTextFromFile } from '../lib/file-parser';
 import { cleanDisplayText } from '../lib/text-clean';
 import { usePersistentState } from '../lib/usePersistentState';
+import { formatDate } from '../lib/format';
+import { cn } from '../lib/cn';
+import { FileDropzone } from './FileDropzone';
+import {
+  Badge,
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  Modal,
+  PageHeader,
+  Select,
+  Textarea,
+} from './ui';
 
 interface CheatsheetGeneratorViewProps {
   courses: Course[];
@@ -40,6 +57,8 @@ interface ClutchSession {
 
 const SESSION_KEY = 'studyflow_clutch_session_v1';
 
+type SheetSort = 'newest' | 'oldest' | 'subject';
+
 export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = ({
   courses,
   cheatsheets,
@@ -49,6 +68,7 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
   focusSheetId = null,
   onFocusSheetHandled,
 }) => {
+  const reduced = useReducedMotion();
   const [session, setSession] = usePersistentState<ClutchSession>(SESSION_KEY, () => ({
     selectedCourseName: courses.length > 0 ? courses[0].title : 'None',
     customSubjectName: '',
@@ -67,6 +87,7 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
     }
     onFocusSheetHandled?.();
   }, [focusSheetId]);
+
   const {
     selectedCourseName, customSubjectName, notesText, extractedFileMeta,
     selectedSheetId, debugEnabled,
@@ -80,24 +101,75 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
   const [scanStatus, setScanStatus] = useState<string>('');
   const [scanPercent, setScanPercent] = useState<number>(0);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [fileError, setFileError] = useState('');
+  const [genOpen, setGenOpen] = useState(
+    cheatsheets.length === 0 || notesText.trim().length > 0
+  );
+  const [libraryQuery, setLibraryQuery] = useState('');
+  const [sheetSort, setSheetSort] = useState<SheetSort>('newest');
+  const [confirmClear, setConfirmClear] = useState(false);
+  const [deleteSheet, setDeleteSheet] = useState<Cheatsheet | null>(null);
+  const [genStats, setGenStats] = useState<{
+    inputLines: number;
+    sections: number;
+    keyTerms: number;
+  } | null>(null);
+
+  const generatorRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLDivElement>(null);
+
   const generatedSheet =
     cheatsheets.find((s) => s.id === selectedSheetId) || cheatsheets[0] || null;
   const [isCopied, setIsCopied] = useState(false);
   const [copiedFormula, setCopiedFormula] = useState<number | null>(null);
-  const [debugData, setDebugData] = useState<{ blocks?: any; chunks?: any; detectedType?: string; removalLog?: any } | null>(null);
   const [progressStep, setProgressStep] = useState<string>('');
 
-  const filteredSheets = searchQuery.trim()
-    ? cheatsheets.filter(
-        (s) =>
-          s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          s.courseName.toLowerCase().includes(searchQuery.toLowerCase())
-      )
-    : cheatsheets;
+  const q = libraryQuery.trim().toLowerCase();
+  const gq = searchQuery.trim().toLowerCase();
+  const filteredSheets = cheatsheets
+    .filter((s) => {
+      if (gq) {
+        const hay = `${s.title} ${s.courseName} ${s.topic}`.toLowerCase();
+        if (!hay.includes(gq)) return false;
+      }
+      if (q) {
+        const hay = `${s.title} ${s.courseName} ${s.topic}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      if (sheetSort === 'oldest') return a.createdAt.localeCompare(b.createdAt);
+      if (sheetSort === 'subject')
+        return a.courseName.localeCompare(b.courseName) || a.title.localeCompare(b.title);
+      return b.createdAt.localeCompare(a.createdAt);
+    });
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const selectSheet = (id: string) => {
+    patch({ selectedSheetId: id });
+    if (window.matchMedia('(max-width: 1023.98px)').matches) {
+      requestAnimationFrame(() =>
+        detailRef.current?.scrollIntoView({
+          block: 'start',
+          behavior: reduced ? 'auto' : 'smooth',
+        })
+      );
+    }
+  };
+
+  const openGenerator = () => {
+    setGenOpen(true);
+    requestAnimationFrame(() => {
+      generatorRef.current?.scrollIntoView({
+        block: 'start',
+        behavior: reduced ? 'auto' : 'smooth',
+      });
+      generatorRef.current?.querySelector<HTMLElement>('input, textarea, select, button')?.focus();
+    });
+  };
+
+  const handleFile = async (file: File) => {
+    setFileError('');
     setIsReadingFile(true);
     setScanPercent(5);
     setScanStatus('Starting document analysis...');
@@ -106,6 +178,10 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
         setScanPercent(pct);
         setScanStatus(status);
       });
+      if (!extracted.text.trim()) {
+        setFileError('No readable text was found in this file.');
+        return;
+      }
       patch({
         extractedFileMeta: {
           fileName: extracted.fileName,
@@ -120,6 +196,7 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
       }
     } catch (err) {
       console.error('File parsing error', err);
+      setFileError('Couldn’t read this file. Try another file or paste the text below.');
     } finally {
       setIsReadingFile(false);
     }
@@ -129,14 +206,13 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
     if (!notesText.trim()) return;
     setIsGenerating(true);
     setProgressStep('Parsing document...');
-    setDebugData(null);
+    setGenStats(null);
     const targetCourse =
       selectedCourseName !== 'None' && selectedCourseName
         ? selectedCourseName
         : customSubjectName.trim() || 'Uploaded Course Notes';
     try {
       setProgressStep('Extracting content...');
-      // Note: In a real implementation, this would track pipeline progress
       const sheet = await qwenLLM.generateCheatsheet(
         {
           courseName: targetCourse,
@@ -145,14 +221,11 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
         'embedded'
       );
       patch({ selectedSheetId: sheet.id });
-      if (debugEnabled) {
-        setDebugData({
-          blocks: notesText.split('\n').filter(l => l.trim()).length,
-          chunks: sheet.sections.length,
-          detectedType: 'auto-detected',
-          removalLog: { removed: 0, reasons: [] },
-        });
-      }
+      setGenStats({
+        inputLines: notesText.split('\n').filter((l) => l.trim()).length,
+        sections: sheet.sections.length,
+        keyTerms: sheet.keyTerms.length,
+      });
       onSaveCheatsheet(sheet);
     } catch (err) {
       console.error(err);
@@ -190,329 +263,395 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
   };
 
   return (
-    <div className="space-y-6">
-      {/* Title */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-            Clutch Notes
-          </h1>
-          <p className="text-xs text-gray-500 mt-1">
-            Upload your lecture notes (PDF, PNG, JPG, or text) to scan & synthesize high-yield Clutch Notes
-          </p>
-        </div>
-      </div>
+    <div>
+      <PageHeader
+        title="Clutch Notes"
+        description="Turn lecture notes into focused review sheets."
+        actions={
+          <Button icon={Plus} onClick={openGenerator}>
+            New Clutch Notes
+          </Button>
+        }
+      />
 
-      {/* Generator Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-        <div>
-          <div className="flex items-center gap-2">
-            <FileText className="w-4 h-4 text-emerald-600" />
-            <h2 className="font-black text-sm text-gray-900">Clutch Notes generator</h2>
-          </div>
-          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-            Upload any note file (PDF, PNG/JPG photos of handwriting/board, TXT, MD, DOCX). It is scanned locally with OCR and distilled into exam-ready Clutch Notes. Zero cloud upload.
-          </p>
-        </div>
-
-        <div className="space-y-3 pt-1">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* File picker */}
-            <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1">
-                Upload File or Photo (PDF, PNG, JPG, TXT, MD)
-              </label>
-              <input
-                type="file"
+      {/* Generator */}
+      <div ref={generatorRef} className="scroll-mt-24">
+      <Card className="mb-6">
+        <CardHeader
+          title="Create Clutch Notes"
+          description="Runs locally on your device — nothing is uploaded."
+          action={
+            <IconButton
+              icon={genOpen ? ChevronUp : ChevronDown}
+              label={genOpen ? 'Collapse generator' : 'Expand generator'}
+              onClick={() => setGenOpen((v) => !v)}
+            />
+          }
+        />
+        <div aria-expanded={genOpen}>
+          {genOpen && (
+            <div className="space-y-4">
+              <FileDropzone
                 accept=".txt,.pdf,.md,.csv,.json,image/png,image/jpeg,image/webp,image/*"
-                onChange={handleFileUpload}
-                className="w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-emerald-50 file:text-emerald-800 hover:file:bg-emerald-100 border border-gray-200 rounded-xl p-1"
+                onFile={handleFile}
+                isReading={isReadingFile}
+                percent={scanPercent}
+                status={scanStatus}
+                meta={extractedFileMeta}
+                error={fileError || undefined}
               />
 
-              {isReadingFile && (
-                <div className="mt-2 space-y-1">
-                  <div className="flex items-center justify-between text-[11px] text-emerald-700 font-semibold">
-                    <span className="flex items-center gap-1.5">
-                      <RefreshCw className="w-3 h-3 animate-spin" />
-                      {scanStatus || 'Scanning file...'}
-                    </span>
-                    <span>{scanPercent}%</span>
-                  </div>
-                  <div className="w-full bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                    <div
-                      className="bg-emerald-600 h-full transition-all duration-300"
-                      style={{ width: `${scanPercent}%` }}
-                    />
-                  </div>
-                </div>
-              )}
-
-              {extractedFileMeta && !isReadingFile && (
-                <div className="mt-2 p-2.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 flex items-center justify-between">
-                  <span className="font-bold flex items-center gap-1.5 truncate">
-                    {extractedFileMeta.isScannedImage ? (
-                      <ImageIcon className="w-4 h-4 text-emerald-600 shrink-0" />
-                    ) : (
-                      <FileCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-                    )}
-                    {extractedFileMeta.fileName}
-                  </span>
-                  <span className="text-[11px] font-semibold text-emerald-700 shrink-0">
-                    {extractedFileMeta.wordCount.toLocaleString()} words scanned
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Subject Association */}
-            <div>
-              <label className="text-xs font-bold text-gray-700 block mb-1">
-                Subject / Course Name
-              </label>
               {courses.length > 0 ? (
-                <>
-                  <select
+                <Field label="Subject" htmlFor="clutch-subject">
+                  <Select
+                    id="clutch-subject"
                     value={selectedCourseName}
                     onChange={(e) => setSelectedCourseName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-800 focus:outline-none focus:border-emerald-500"
                   >
-                    <option value="None">Custom / Other Course</option>
+                    <option value="None">Other subject</option>
                     {courses.map((c) => (
                       <option key={c.id} value={c.title}>
                         {c.title}
                       </option>
                     ))}
-                  </select>
+                  </Select>
                   {selectedCourseName === 'None' && (
-                    <input
-                      type="text"
-                      placeholder="Enter subject name (e.g. Organic Chemistry, Algorithms)..."
+                    <Input
+                      className="mt-2"
+                      aria-label="Custom subject name"
+                      placeholder="e.g. Organic Chemistry, Algorithms"
                       value={customSubjectName}
                       onChange={(e) => setCustomSubjectName(e.target.value)}
-                      className="w-full mt-2 bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs text-gray-800 focus:outline-none focus:border-emerald-500"
                     />
                   )}
-                </>
+                </Field>
               ) : (
-                <input
-                  type="text"
-                  placeholder="Enter subject name (e.g. Physics, Biology, History)..."
-                  value={customSubjectName}
-                  onChange={(e) => setCustomSubjectName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2.5 text-xs text-gray-800 focus:outline-none focus:border-emerald-500"
+                <Field label="Subject" htmlFor="clutch-subject">
+                  <Input
+                    id="clutch-subject"
+                    placeholder="e.g. Physics, Biology, History"
+                    value={customSubjectName}
+                    onChange={(e) => setCustomSubjectName(e.target.value)}
+                  />
+                </Field>
+              )}
+
+              <Field label="Notes text" htmlFor="clutch-notes">
+                <Textarea
+                  id="clutch-notes"
+                  rows={6}
+                  value={notesText}
+                  onChange={(e) => setNotesText(e.target.value)}
+                  placeholder="Paste raw study notes here..."
+                  className="font-mono text-[13px]"
                 />
+                <div className="mt-1.5 flex justify-end">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={!notesText && !extractedFileMeta}
+                    onClick={() => setConfirmClear(true)}
+                  >
+                    Clear draft
+                  </Button>
+                </div>
+              </Field>
+
+              {isGenerating && progressStep && (
+                <p className="text-[13px] text-accent-ink flex items-center gap-1.5">
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" aria-hidden />
+                  {progressStep}
+                </p>
+              )}
+
+              <div className="flex items-center justify-between gap-3 flex-wrap border-t border-line pt-4">
+                <label className="flex items-center gap-2 text-[13px] text-ink-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={debugEnabled}
+                    onChange={(e) => setDebugEnabled(e.target.checked)}
+                    className="w-4 h-4 accent-[var(--accent)]"
+                  />
+                  Show generation details
+                </label>
+                <Button
+                  icon={Sparkles}
+                  loading={isGenerating}
+                  disabled={isGenerating || !notesText.trim()}
+                  onClick={handleGenerate}
+                >
+                  {isGenerating ? 'Generating…' : 'Generate Clutch Notes'}
+                </Button>
+              </div>
+
+              {debugEnabled && genStats && (
+                <div className="rounded-control bg-subtle p-3 grid grid-cols-3 gap-2 text-[13px]">
+                  <div>
+                    <span className="text-ink-3 block text-xs">Input lines</span>
+                    <span className="text-ink font-medium tabular-nums">{genStats.inputLines}</span>
+                  </div>
+                  <div>
+                    <span className="text-ink-3 block text-xs">Sections</span>
+                    <span className="text-ink font-medium tabular-nums">{genStats.sections}</span>
+                  </div>
+                  <div>
+                    <span className="text-ink-3 block text-xs">Key terms</span>
+                    <span className="text-ink font-medium tabular-nums">{genStats.keyTerms}</span>
+                  </div>
+                </div>
               )}
             </div>
-          </div>
-
-          <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-bold text-gray-700 block">
-                Scanned / Extracted Notes Content
-              </label>
-              <button
-                type="button"
-                onClick={() => {
-                  if (!notesText && !extractedFileMeta) return;
-                  if (window.confirm('Clear the current draft notes and file? Your saved Clutch Notes will not be deleted.')) {
-                    patch({ notesText: '', extractedFileMeta: null });
-                  }
-                }}
-                className="text-[11px] font-bold text-gray-400 hover:text-rose-600"
-              >
-                Clear
-              </button>
-            </div>
-            <textarea
-              rows={4}
-              value={notesText}
-              onChange={(e) => setNotesText(e.target.value)}
-              placeholder="Upload a PDF or PNG image above, or paste raw study notes here..."
-              className="w-full bg-gray-50 border border-gray-200 rounded-xl p-3 text-xs text-gray-800 focus:outline-none focus:border-emerald-500 font-mono"
-            />
-          </div>
-
-          <button
-            onClick={handleGenerate}
-            disabled={isGenerating || !notesText.trim()}
-            className="px-5 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-2 shadow-sm transition-all"
-          >
-            {isGenerating ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Generating Clutch Notes...
-              </>
-            ) : (
-              <>
-                <Sparkles className="w-4 h-4" />
-                Generate Clutch Notes
-              </>
-            )}
-          </button>
-        </div>
-
-        {/* Debug Toggle */}
-        <div className="flex items-center justify-between pt-2">
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={debugEnabled}
-              onChange={(e) => setDebugEnabled(e.target.checked)}
-              className="w-4 h-4 text-emerald-600 rounded border-gray-300 focus:ring-emerald-500"
-            />
-            <span className="text-xs text-gray-600">Show debug info</span>
-          </label>
-          {progressStep && (
-            <span className="text-xs text-emerald-600 font-semibold">{progressStep}</span>
           )}
         </div>
-
-        {/* Debug Data Display */}
-        {debugEnabled && debugData && (
-          <div className="mt-3 p-3 rounded-lg bg-gray-50 border border-gray-200">
-            <h4 className="text-xs font-bold text-gray-700 mb-2">Debug Information</h4>
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <div><span className="text-gray-500">Blocks:</span> {debugData.blocks || 0}</div>
-              <div><span className="text-gray-500">Chunks:</span> {debugData.chunks || 0}</div>
-              <div><span className="text-gray-500">Type:</span> {debugData.detectedType || 'N/A'}</div>
-              <div><span className="text-gray-500">Removed:</span> {debugData.removalLog?.removed || 0}</div>
-            </div>
-          </div>
-        )}
+      </Card>
       </div>
 
-      {/* Cheatsheet Library selector if multiple sheets exist */}
-      {filteredSheets.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {filteredSheets.map((sheet) => (
-            <button
-              key={sheet.id}
-              onClick={() => patch({ selectedSheetId: sheet.id })}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all flex items-center gap-1.5 ${
-                generatedSheet?.id === sheet.id
-                  ? 'bg-emerald-800 text-white shadow-2xs'
-                  : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50'
-              }`}
-            >
-              <BookOpen className="w-3 h-3" />
-              {sheet.courseName}: {sheet.title}
-            </button>
-          ))}
-        </div>
-      )}
-
-      {/* Empty State when no cheatsheet generated yet */}
-      {!generatedSheet && cheatsheets.length === 0 && (
-        <div className="p-8 text-center bg-white border border-dashed border-gray-200 rounded-2xl space-y-2">
-          <FileText className="w-8 h-8 text-gray-300 mx-auto" />
-          <h3 className="font-bold text-xs text-gray-700">No Clutch Notes created yet</h3>
-          <p className="text-[11px] text-gray-400 max-w-sm mx-auto">
-            Upload a PDF document, lecture slides, or PNG/JPG notes photo above and click "Generate Clutch Notes" to make your first review sheet.
-          </p>
-        </div>
-      )}
-
-      {/* Generated Result Card */}
-      {generatedSheet && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-          <div className="flex items-start justify-between pb-3 border-b border-gray-100">
-            <div>
-              <span className="text-[10px] font-mono font-semibold text-emerald-700 block">
-                {generatedSheet.courseName}
-              </span>
-              <h3 className="text-base font-black text-gray-900 mt-0.5">
-                {cleanDisplayText(generatedSheet.title)}
-              </h3>
-              <p className="text-xs text-gray-500 mt-1">
-                {cleanDisplayText(generatedSheet.summary)}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handlePrint}
-                className="px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-gray-50 text-gray-700 text-xs font-bold flex items-center gap-1.5 transition-colors"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                Print
-              </button>
-              <button
-                onClick={handleCopy}
-                className="px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
-              >
-                {isCopied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
-                {isCopied ? 'Copied' : 'Copy'}
-              </button>
-              <button
-                onClick={() => {
-                  onDeleteCheatsheet(generatedSheet.id);
-                  const next = cheatsheets.find((s) => s.id !== generatedSheet.id);
-                  patch({ selectedSheetId: next?.id || '' });
-                }}
-                className="p-1.5 text-gray-400 hover:text-rose-600 rounded-lg transition-colors"
-                title="Delete Clutch Notes"
-              >
-                <Trash2 className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-4 pt-1">
-            {generatedSheet.sections.map((sec, idx) => (
-              <div key={idx} className="p-4 rounded-xl bg-gray-50 border border-gray-200/80 space-y-2">
-                <h4 className="text-xs font-black text-gray-900">
-                  {cleanDisplayText(sec.heading)}
-                </h4>
-                <ul className="text-xs text-gray-700 space-y-1 list-disc pl-5">
-                  {sec.bulletPoints.map((bp, bIdx) => (
-                    <li key={bIdx}>{cleanDisplayText(bp)}</li>
-                  ))}
-                </ul>
-                {sec.codeOrFormula && (
-                  <div className="relative mt-2">
-                    <pre className="p-3 rounded-lg bg-white border border-gray-200 font-mono text-xs text-emerald-800 overflow-x-auto whitespace-pre-wrap">
-                      {sec.codeOrFormula}
-                    </pre>
-                    <button
-                      onClick={() => handleCopyFormula(sec.codeOrFormula!, idx)}
-                      className="absolute top-2 right-2 p-1 rounded bg-gray-100 hover:bg-gray-200 text-gray-600 text-[10px] flex items-center gap-1"
-                    >
-                      {copiedFormula === idx ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
-                      Copy
-                    </button>
-                  </div>
-                )}
+      {/* Library + detail */}
+      {cheatsheets.length === 0 ? (
+        <EmptyState
+          icon={NotebookText}
+          title="No Clutch Notes yet"
+          description="Upload a PDF, image or text file, or paste notes, to create your first review sheet."
+          action={
+            <Button size="sm" onClick={openGenerator}>
+              Create Clutch Notes
+            </Button>
+          }
+        />
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] items-start">
+          {/* Library list */}
+          <Card padding="none">
+            <div className="flex items-center justify-between px-4 pt-4 pb-3">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[15px] font-semibold text-ink">Library</h2>
+                <Badge tone="neutral">{filteredSheets.length}</Badge>
               </div>
-            ))}
+            </div>
+            <div className="px-4 pb-3 space-y-2">
+              <div className="relative">
+                <Search
+                  className="w-4 h-4 text-ink-3 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
+                  aria-hidden
+                />
+                <Input
+                  type="search"
+                  aria-label="Search Clutch Notes"
+                  placeholder="Search"
+                  value={libraryQuery}
+                  onChange={(e) => setLibraryQuery(e.target.value)}
+                  className="pl-9 h-9 text-sm"
+                />
+              </div>
+              <Select
+                aria-label="Sort Clutch Notes"
+                value={sheetSort}
+                onChange={(e) => setSheetSort(e.target.value as SheetSort)}
+              >
+                <option value="newest">Newest</option>
+                <option value="oldest">Oldest</option>
+                <option value="subject">Subject A–Z</option>
+              </Select>
+            </div>
+            <div className="max-h-[60dvh] overflow-y-auto divide-y divide-line">
+              {filteredSheets.length === 0 ? (
+                <EmptyState
+                  compact
+                  icon={NotebookText}
+                  title={`No Clutch Notes match “${libraryQuery.trim() || searchQuery.trim()}”`}
+                />
+              ) : (
+                filteredSheets.map((sheet) => (
+                  <button
+                    key={sheet.id}
+                    type="button"
+                    aria-current={generatedSheet?.id === sheet.id || undefined}
+                    onClick={() => selectSheet(sheet.id)}
+                    className={cn(
+                      'w-full px-4 py-3 text-left transition-[background-color] duration-150',
+                      generatedSheet?.id === sheet.id
+                        ? 'bg-accent-soft'
+                        : 'hover:bg-subtle'
+                    )}
+                  >
+                    <div className="text-xs font-medium text-accent-ink">
+                      {sheet.courseName}
+                    </div>
+                    <div className="text-sm font-medium text-ink line-clamp-2">
+                      {sheet.title}
+                    </div>
+                    <div className="text-xs text-ink-3 mt-0.5">
+                      {formatDate(sheet.createdAt)} · {sheet.sections.length} sections
+                    </div>
+                  </button>
+                ))
+              )}
+            </div>
+          </Card>
 
-            {generatedSheet.keyTerms && generatedSheet.keyTerms.length > 0 && (
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200/80 space-y-2">
-                <h4 className="text-xs font-black text-gray-900">
-                  Key Terminology
-                </h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
-                  {generatedSheet.keyTerms.map((kt, kIdx) => (
-                    <div key={kIdx} className="p-2.5 rounded-lg bg-white border border-gray-200 text-xs">
-                      <strong className="text-gray-900 block">{cleanDisplayText(kt.term)}:</strong>
-                      <span className="text-gray-600 mt-0.5 block">{cleanDisplayText(kt.definition)}</span>
+          {/* Detail */}
+          <div ref={detailRef} className="scroll-mt-24">
+            {generatedSheet && (
+              <Card padding="lg">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0">
+                    <div className="text-xs font-medium text-accent-ink">
+                      {generatedSheet.courseName}
+                    </div>
+                    <h3 className="font-display text-xl sm:text-2xl font-semibold text-ink mt-0.5">
+                      {cleanDisplayText(generatedSheet.title)}
+                    </h3>
+                    <p className="text-sm text-ink-2 mt-1">
+                      {cleanDisplayText(generatedSheet.summary)}
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      <Badge tone="neutral">{formatDate(generatedSheet.createdAt)}</Badge>
+                      <Badge tone="neutral">{generatedSheet.sections.length} sections</Badge>
+                      <Badge tone="neutral">{generatedSheet.keyTerms.length} key terms</Badge>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 print:hidden">
+                    <Button variant="secondary" size="sm" icon={isCopied ? Check : Copy} onClick={handleCopy}>
+                      {isCopied ? 'Copied' : 'Copy'}
+                    </Button>
+                    <Button variant="secondary" size="sm" icon={Printer} onClick={handlePrint}>
+                      Print
+                    </Button>
+                    <IconButton
+                      icon={Trash2}
+                      label="Delete Clutch Notes"
+                      variant="secondary"
+                      size="sm"
+                      onClick={() => setDeleteSheet(generatedSheet)}
+                    />
+                  </div>
+                </div>
+
+                <div className="border-t border-line pt-5 mt-5 space-y-5">
+                  {generatedSheet.sections.map((sec, idx) => (
+                    <div key={idx}>
+                      <h4 className="text-[15px] font-semibold text-ink mb-2">
+                        {cleanDisplayText(sec.heading)}
+                      </h4>
+                      <ul className="list-disc pl-5 space-y-1.5 text-sm leading-relaxed text-ink marker:text-ink-3">
+                        {sec.bulletPoints.map((bp, bIdx) => (
+                          <li key={bIdx}>{cleanDisplayText(bp)}</li>
+                        ))}
+                      </ul>
+                      {sec.codeOrFormula && (
+                        <div className="relative mt-3">
+                          <pre className="font-mono text-[13px] bg-subtle border border-line rounded-control p-3 whitespace-pre-wrap text-ink">
+                            {sec.codeOrFormula}
+                          </pre>
+                          <IconButton
+                            icon={copiedFormula === idx ? Check : Copy}
+                            label={copiedFormula === idx ? 'Copied' : 'Copy formula'}
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => handleCopyFormula(sec.codeOrFormula!, idx)}
+                            className="absolute top-2 right-2"
+                          />
+                        </div>
+                      )}
                     </div>
                   ))}
-                </div>
-              </div>
-            )}
 
-            {generatedSheet.mnemonics && generatedSheet.mnemonics.length > 0 && (
-              <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900">
-                <span className="font-bold block mb-1">Memory Hook / Mnemonic:</span>
-                <ul className="list-disc pl-5 space-y-0.5">
-                  {generatedSheet.mnemonics.map((m, mIdx) => (
-                    <li key={mIdx}>{cleanDisplayText(m)}</li>
-                  ))}
-                </ul>
-              </div>
+                  {generatedSheet.keyTerms && generatedSheet.keyTerms.length > 0 && (
+                    <div>
+                      <h4 className="text-[15px] font-semibold text-ink mb-2">Key terms</h4>
+                      <div className="grid sm:grid-cols-2 gap-2">
+                        {generatedSheet.keyTerms.map((kt, kIdx) => (
+                          <div key={kIdx} className="rounded-control border border-line p-3">
+                            <div className="text-sm font-medium text-ink">
+                              {cleanDisplayText(kt.term)}
+                            </div>
+                            <div className="text-[13px] text-ink-2 mt-0.5">
+                              {cleanDisplayText(kt.definition)}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {generatedSheet.mnemonics && generatedSheet.mnemonics.length > 0 && (
+                    <div className="rounded-control bg-accent-soft text-accent-ink p-4">
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        {generatedSheet.mnemonics.map((m, mIdx) => (
+                          <li key={mIdx}>{cleanDisplayText(m)}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              </Card>
             )}
           </div>
         </div>
       )}
+
+      {/* Clear draft confirm */}
+      <Modal
+        open={confirmClear}
+        onClose={() => setConfirmClear(false)}
+        title="Clear draft?"
+        description="Your saved Clutch Notes are not affected."
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setConfirmClear(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                patch({ notesText: '', extractedFileMeta: null });
+                setFileError('');
+                setConfirmClear(false);
+              }}
+            >
+              Clear
+            </Button>
+          </>
+        }
+      >
+        <div />
+      </Modal>
+
+      {/* Delete sheet confirm */}
+      <Modal
+        open={deleteSheet !== null}
+        onClose={() => setDeleteSheet(null)}
+        title="Delete these Clutch Notes?"
+        description={
+          deleteSheet
+            ? `“${deleteSheet.title}” will be permanently removed. Exams you already generated are not affected.`
+            : undefined
+        }
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setDeleteSheet(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (deleteSheet) {
+                  onDeleteCheatsheet(deleteSheet.id);
+                  const next = cheatsheets.find((s) => s.id !== deleteSheet.id);
+                  patch({ selectedSheetId: next?.id || '' });
+                }
+                setDeleteSheet(null);
+              }}
+            >
+              Delete
+            </Button>
+          </>
+        }
+      >
+        <div />
+      </Modal>
     </div>
   );
 };

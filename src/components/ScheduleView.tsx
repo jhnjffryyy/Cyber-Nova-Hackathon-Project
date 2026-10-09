@@ -1,14 +1,20 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  Calendar,
-  Plus,
-  X,
-  Send,
-  Sparkles,
-} from 'lucide-react';
+import React, { useEffect, useId, useRef, useState } from 'react';
+import { CalendarDays, Plus, Send, Sparkles, Undo2 } from 'lucide-react';
 import { Course } from '../types';
 import { handleScheduleMessage, PendingState } from '../lib/schedule-assistant';
 import { WeekCalendar } from './WeekCalendar';
+import { cn } from '../lib/cn';
+import {
+  Button,
+  Card,
+  CardHeader,
+  EmptyState,
+  Field,
+  IconButton,
+  Input,
+  Modal,
+  PageHeader,
+} from './ui';
 
 interface ScheduleViewProps {
   courses: Course[];
@@ -31,12 +37,17 @@ const EXAMPLE_CHIPS = [
   'Add Thesis meeting on October 20 at 10am',
 ];
 
+const DAY_NAMES = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const COLORS = ['#3B82F6', '#06B6D4', '#F59E0B', '#8B5CF6', '#10B981', '#EC4899', '#EF4444'];
+
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
   courses,
   onAddCourse,
   onDeleteCourse,
   searchQuery = '',
 }) => {
+  const formId = useId();
+
   // AI Schedule Assistant state
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
@@ -59,11 +70,14 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const [endTime, setEndTime] = useState('09:30');
   const [room, setRoom] = useState('Room 101');
   const [instructor, setInstructor] = useState('Faculty');
-  const [units, setUnits] = useState(3);
   const [color, setColor] = useState('#3B82F6');
   const [classStartDate, setClassStartDate] = useState('');
   const [classEndDate, setClassEndDate] = useState('');
   const [dateRangeError, setDateRangeError] = useState('');
+  const [daysError, setDaysError] = useState('');
+
+  // Remove-class confirm
+  const [removeCourse, setRemoveCourse] = useState<Course | null>(null);
 
   useEffect(() => {
     listRef.current?.scrollTo({ top: listRef.current.scrollHeight });
@@ -115,9 +129,20 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     );
   };
 
+  const openAddClass = () => {
+    setDaysError('');
+    setDateRangeError('');
+    setIsAddClassOpen(true);
+  };
+
   const handleCreateClass = (e: React.FormEvent) => {
     e.preventDefault();
     if (!className.trim()) return;
+    if (classDays.length === 0) {
+      setDaysError('Pick at least one day.');
+      return;
+    }
+    setDaysError('');
     if (classStartDate && classEndDate && classEndDate < classStartDate) {
       setDateRangeError('End date must be on or after the start date.');
       return;
@@ -127,7 +152,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
       id: `course-${Date.now()}`,
       code: classCode.trim() || className.slice(0, 7).toUpperCase(),
       title: className.trim(),
-      units: Number(units) || 3,
+      units: 3,
       days: classDays,
       startTime,
       endTime,
@@ -140,293 +165,290 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     setIsAddClassOpen(false);
     setClassName('');
     setClassCode('');
+    setClassDays(['Mon', 'Wed']);
     setClassStartDate('');
     setClassEndDate('');
   };
 
   return (
-    <div className="space-y-6">
-      {/* Title */}
-      <div>
-        <h1 className="text-2xl font-black text-gray-900 tracking-tight">
-          My schedule
-        </h1>
-        <p className="text-xs text-gray-500 mt-1">
-          Weekly class timetable with an AI assistant that adds classes from plain text
-        </p>
-      </div>
-
-      {/* AI Schedule Assistant */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-3">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-emerald-600" />
-          <div>
-            <h2 className="font-black text-sm text-gray-900">AI Schedule Assistant</h2>
-            <p className="text-[11px] text-gray-500">
-              Type what you want to add. It runs on the local engine on your device.
-            </p>
-          </div>
-        </div>
-
-        <div
-          ref={listRef}
-          className="max-h-72 overflow-y-auto space-y-2 pr-1"
-        >
-          {messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`max-w-[80%] px-3.5 py-2 rounded-xl text-xs leading-relaxed ${
-                  m.role === 'user'
-                    ? 'bg-emerald-800 text-white'
-                    : 'bg-gray-50 border border-gray-200 text-gray-800'
-                }`}
-              >
-                <p>{m.text}</p>
-                {m.addedCourseId && (
-                  <button
-                    onClick={() => handleUndo(m)}
-                    className="mt-1.5 text-[10px] font-bold text-rose-600 hover:text-rose-700 underline"
-                  >
-                    Undo
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-
-        <div className="flex flex-wrap gap-1.5">
-          {EXAMPLE_CHIPS.map((chip) => (
-            <button
-              key={chip}
-              onClick={() => setInput(chip)}
-              className="px-2.5 py-1 rounded-full bg-gray-100 hover:bg-gray-200 text-[10px] font-semibold text-gray-600 transition-colors"
-            >
-              {chip}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex items-center gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleSend();
-            }}
-            placeholder="e.g. Add Web Development every Monday at 8 AM"
-            className="flex-1 bg-gray-50 border border-gray-200 rounded-xl px-3.5 py-2.5 text-xs text-gray-800 focus:outline-none focus:bg-white focus:border-emerald-500"
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim()}
-            className="px-4 py-2.5 rounded-xl bg-emerald-800 hover:bg-emerald-700 disabled:opacity-50 text-white text-xs font-bold flex items-center gap-1.5 shadow-sm transition-colors"
-          >
-            <Send className="w-3.5 h-3.5" />
-            Send
-          </button>
-        </div>
-      </div>
-
-      {/* Weekly schedule Card */}
-      <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b border-gray-100">
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-emerald-600" />
-            <h2 className="font-black text-sm text-gray-900">Weekly schedule</h2>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 font-semibold">
-              {filteredCourses.length} Enrolled {filteredCourses.length === 1 ? 'Subject' : 'Subjects'}
-            </span>
-          </div>
-          <button
-            onClick={() => setIsAddClassOpen(true)}
-            className="px-3 py-1.5 rounded-lg bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1 shadow-sm transition-colors"
-          >
-            <Plus className="w-3.5 h-3.5" />
+    <div>
+      <PageHeader
+        title="Schedule"
+        description="Your weekly timetable. Add classes manually or describe them in plain language."
+        actions={
+          <Button icon={Plus} onClick={openAddClass}>
             Add class
-          </button>
-        </div>
+          </Button>
+        }
+      />
 
-        <WeekCalendar courses={filteredCourses} onDeleteCourse={onDeleteCourse} />
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px] items-start">
+        {/* Week card */}
+        <Card>
+          {courses.length === 0 ? (
+            <EmptyState
+              icon={CalendarDays}
+              title="Your timetable is empty"
+              description="Describe a class to the assistant or add one manually."
+              action={
+                <Button size="sm" icon={Plus} onClick={openAddClass}>
+                  Add class
+                </Button>
+              }
+            />
+          ) : (
+            <WeekCalendar
+              courses={filteredCourses}
+              subjectCount={filteredCourses.length}
+              onRequestDelete={setRemoveCourse}
+            />
+          )}
+        </Card>
 
-        {/* Empty state */}
-        {courses.length === 0 && (
-          <div className="p-6 text-center border-t border-gray-100 bg-gray-50/50 rounded-xl space-y-2">
-            <Calendar className="w-6 h-6 text-gray-300 mx-auto" />
-            <p className="text-xs font-bold text-gray-700">Your timetable is currently empty</p>
-            <p className="text-[11px] text-gray-500 max-w-md mx-auto">
-              Type a class into the AI Schedule Assistant above, or click <strong>"Add class"</strong> to add a subject manually.
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Add Class Modal */}
-      {isAddClassOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-gray-200">
-            <div className="flex items-center justify-between pb-2 border-b border-gray-100">
-              <h3 className="text-base font-black text-gray-900">Add Subject to Timetable</h3>
-              <button onClick={() => setIsAddClassOpen(false)}>
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            </div>
-            <form onSubmit={handleCreateClass} className="space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Code</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. CS 101"
-                    value={classCode}
-                    onChange={(e) => setClassCode(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div className="col-span-2">
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Subject Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Mathematics, Operating Systems..."
-                    value={className}
-                    onChange={(e) => setClassName(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">Days</label>
-                <div className="flex gap-1.5">
-                  {['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map((d) => (
-                    <button
-                      key={d}
-                      type="button"
-                      onClick={() => {
-                        if (classDays.includes(d)) setClassDays(classDays.filter((x) => x !== d));
-                        else setClassDays([...classDays, d]);
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-xs font-bold ${
-                        classDays.includes(d) ? 'bg-emerald-800 text-white' : 'bg-gray-100 text-gray-600'
-                      }`}
+        {/* Assistant card */}
+        <Card className="xl:sticky xl:top-24">
+          <CardHeader
+            title="Schedule assistant"
+            icon={Sparkles}
+            description="Runs locally on your device."
+          />
+          <div
+            ref={listRef}
+            aria-live="polite"
+            className="max-h-80 overflow-y-auto space-y-2 mb-3"
+          >
+            {messages.map((m) => (
+              <div key={m.id} className={m.role === 'user' ? 'flex' : 'flex'}>
+                <div
+                  className={
+                    m.role === 'user'
+                      ? 'ml-auto w-fit max-w-[85%] bg-accent text-on-accent rounded-2xl rounded-br-md px-3.5 py-2 text-sm'
+                      : 'w-fit max-w-[85%] bg-subtle text-ink rounded-2xl rounded-bl-md px-3.5 py-2 text-sm'
+                  }
+                >
+                  <p>{m.text}</p>
+                  {m.addedCourseId && (
+                    <Button
+                      variant="danger-soft"
+                      size="sm"
+                      icon={Undo2}
+                      className="mt-1.5"
+                      onClick={() => handleUndo(m)}
                     >
-                      {d}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Start Time</label>
-                  <input
-                    type="time"
-                    value={startTime}
-                    onChange={(e) => setStartTime(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">End Time</label>
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Room</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Room 101, Lab 2"
-                    value={room}
-                    onChange={(e) => setRoom(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Instructor</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Dr. Davies"
-                    value={instructor}
-                    onChange={(e) => setInstructor(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs focus:outline-none focus:border-emerald-500"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">Start Date (optional)</label>
-                  <input
-                    type="date"
-                    value={classStartDate}
-                    onChange={(e) => setClassStartDate(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-                <div>
-                  <label className="text-xs font-bold text-gray-700 block mb-1">End Date (optional)</label>
-                  <input
-                    type="date"
-                    value={classEndDate}
-                    onChange={(e) => setClassEndDate(e.target.value)}
-                    className="w-full bg-gray-50 border border-gray-200 rounded-xl px-3 py-2 text-xs"
-                  />
-                </div>
-              </div>
-              {dateRangeError && (
-                <p className="text-[11px] text-rose-600 font-medium">{dateRangeError}</p>
-              )}
-
-              <div>
-                <label className="text-xs font-bold text-gray-700 block mb-1">Color Theme</label>
-                <div className="flex gap-2">
-                  {['#3B82F6', '#06B6D4', '#F59E0B', '#8B5CF6', '#10B981', '#EC4899', '#EF4444'].map(
-                    (c) => (
-                      <button
-                        type="button"
-                        key={c}
-                        onClick={() => setColor(c)}
-                        className={`w-6 h-6 rounded-full transition-transform ${
-                          color === c ? 'scale-125 ring-2 ring-emerald-800' : ''
-                        }`}
-                        style={{ backgroundColor: c }}
-                      />
-                    )
+                      Undo
+                    </Button>
                   )}
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
-                <button
-                  type="button"
-                  onClick={() => setIsAddClassOpen(false)}
-                  className="px-4 py-2 text-xs font-bold text-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-800 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl"
-                >
-                  Save Subject
-                </button>
-              </div>
-            </form>
+            ))}
           </div>
-        </div>
-      )}
+
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {EXAMPLE_CHIPS.map((chip) => (
+              <button
+                key={chip}
+                type="button"
+                onClick={() => setInput(chip)}
+                className="h-7 px-3 rounded-full border border-line bg-surface text-xs text-ink-2 hover:bg-subtle transition-[background-color] duration-150"
+              >
+                {chip}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Input
+              type="text"
+              aria-label="Message the schedule assistant"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleSend();
+              }}
+              placeholder="e.g. Add Web Development every Monday at 8 AM"
+            />
+            <Button icon={Send} onClick={handleSend} disabled={!input.trim()}>
+              Send
+            </Button>
+          </div>
+        </Card>
+      </div>
+
+      {/* Remove class confirm */}
+      <Modal
+        open={removeCourse !== null}
+        onClose={() => setRemoveCourse(null)}
+        title={removeCourse ? `Remove ${removeCourse.title}?` : 'Remove class?'}
+        description="This removes the class from every week."
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setRemoveCourse(null)}>
+              Cancel
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => {
+                if (removeCourse) onDeleteCourse(removeCourse.id);
+                setRemoveCourse(null);
+              }}
+            >
+              Remove
+            </Button>
+          </>
+        }
+      >
+        <div />
+      </Modal>
+
+      {/* Add class modal */}
+      <Modal
+        open={isAddClassOpen}
+        onClose={() => setIsAddClassOpen(false)}
+        title="Add class"
+        size="md"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setIsAddClassOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit" form={formId}>
+              Save class
+            </Button>
+          </>
+        }
+      >
+        <form id={formId} onSubmit={handleCreateClass} className="space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <Field label="Code" htmlFor={`${formId}-code`}>
+              <Input
+                id={`${formId}-code`}
+                placeholder="e.g. CS 101"
+                value={classCode}
+                onChange={(e) => setClassCode(e.target.value)}
+              />
+            </Field>
+            <div className="sm:col-span-2">
+              <Field label="Subject name" htmlFor={`${formId}-name`}>
+                <Input
+                  id={`${formId}-name`}
+                  required
+                  placeholder="e.g. Mathematics"
+                  value={className}
+                  onChange={(e) => setClassName(e.target.value)}
+                />
+              </Field>
+            </div>
+          </div>
+
+          <Field label="Days" htmlFor={`${formId}-days`} error={daysError || undefined}>
+            <div className="flex flex-wrap gap-1.5">
+              {DAY_NAMES.map((d) => {
+                const active = classDays.includes(d);
+                return (
+                  <button
+                    key={d}
+                    type="button"
+                    aria-pressed={active}
+                    onClick={() => {
+                      setDaysError('');
+                      setClassDays(
+                        active ? classDays.filter((x) => x !== d) : [...classDays, d]
+                      );
+                    }}
+                    className={cn(
+                      'h-9 min-w-11 rounded-control text-[13px] font-medium transition-[background-color,color] duration-150',
+                      active ? 'bg-accent text-on-accent' : 'bg-subtle text-ink-2 hover:text-ink'
+                    )}
+                  >
+                    {d}
+                  </button>
+                );
+              })}
+            </div>
+          </Field>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Start time" htmlFor={`${formId}-start`}>
+              <Input
+                id={`${formId}-start`}
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+              />
+            </Field>
+            <Field label="End time" htmlFor={`${formId}-end`}>
+              <Input
+                id={`${formId}-end`}
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Room" htmlFor={`${formId}-room`}>
+              <Input
+                id={`${formId}-room`}
+                placeholder="e.g. Room 101"
+                value={room}
+                onChange={(e) => setRoom(e.target.value)}
+              />
+            </Field>
+            <Field label="Instructor" htmlFor={`${formId}-instructor`}>
+              <Input
+                id={`${formId}-instructor`}
+                placeholder="e.g. Dr. Davies"
+                value={instructor}
+                onChange={(e) => setInstructor(e.target.value)}
+              />
+            </Field>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Field label="Start date (optional)" htmlFor={`${formId}-sd`}>
+              <Input
+                id={`${formId}-sd`}
+                type="date"
+                value={classStartDate}
+                onChange={(e) => setClassStartDate(e.target.value)}
+              />
+            </Field>
+            <Field
+              label="End date (optional)"
+              htmlFor={`${formId}-ed`}
+              error={dateRangeError || undefined}
+            >
+              <Input
+                id={`${formId}-ed`}
+                type="date"
+                value={classEndDate}
+                onChange={(e) => setClassEndDate(e.target.value)}
+              />
+            </Field>
+          </div>
+
+          <Field label="Color" htmlFor={`${formId}-color`}>
+            <div className="flex gap-2">
+              {COLORS.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  aria-label={`Color ${c}`}
+                  aria-pressed={color === c}
+                  onClick={() => setColor(c)}
+                  className={cn(
+                    'h-7 w-7 rounded-full',
+                    color === c && 'ring-2 ring-accent ring-offset-2 ring-offset-surface'
+                  )}
+                  style={{ backgroundColor: c }}
+                />
+              ))}
+            </div>
+          </Field>
+        </form>
+      </Modal>
     </div>
   );
 };
