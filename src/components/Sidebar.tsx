@@ -1,109 +1,208 @@
-import React from 'react';
-import {
-  LayoutDashboard,
-  Calendar,
-  CheckSquare,
-  FileText,
-  GraduationCap,
-  Timer,
-  User,
-  Edit2,
-} from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { GraduationCap, Database, X } from 'lucide-react';
+import { NAV_ITEMS, TabId } from '../lib/navigation';
+import { cn } from '../lib/cn';
+import { IconButton } from './ui';
 
 interface SidebarProps {
-  activeTab: 'overview' | 'schedule' | 'tasks' | 'cheatsheets' | 'exam' | 'pomodoro' | 'desktop';
-  setActiveTab: (tab: 'overview' | 'schedule' | 'tasks' | 'cheatsheets' | 'exam' | 'pomodoro' | 'desktop') => void;
+  activeTab: TabId;
+  onNavigate: (tab: TabId) => void;
   studentName: string;
   programName: string;
   onOpenProfileModal: () => void;
+  onOpenBackupModal: () => void;
+  mobileOpen: boolean;
+  onCloseMobile: () => void;
 }
+
+const getInitials = (name: string) => {
+  if (!name || name === 'Student') return 'ST';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
+  return name.slice(0, 2).toUpperCase();
+};
 
 export const Sidebar: React.FC<SidebarProps> = ({
   activeTab,
-  setActiveTab,
+  onNavigate,
   studentName,
   programName,
   onOpenProfileModal,
+  onOpenBackupModal,
+  mobileOpen,
+  onCloseMobile,
 }) => {
-  const navItems = [
-    { id: 'overview' as const, label: 'Overview', icon: LayoutDashboard },
-    { id: 'schedule' as const, label: 'My schedule', icon: Calendar },
-    { id: 'tasks' as const, label: 'To-do list', icon: CheckSquare },
-    { id: 'cheatsheets' as const, label: 'Clutch Notes', icon: FileText },
-    { id: 'exam' as const, label: 'Exam Simulator', icon: GraduationCap },
-    { id: 'pomodoro' as const, label: 'Pomodoro', icon: Timer },
-  ];
+  const reducedMotion = useReducedMotion();
+  const drawerRef = useRef<HTMLDivElement>(null);
+  const prevFocusRef = useRef<HTMLElement | null>(null);
 
-  const getInitials = (name: string) => {
-    if (!name || name === 'Student') return 'ST';
-    const parts = name.trim().split(/\s+/);
-    if (parts.length >= 2) return `${parts[0][0]}${parts[1][0]}`.toUpperCase();
-    return name.slice(0, 2).toUpperCase();
+  useEffect(() => {
+    if (!mobileOpen) return;
+    prevFocusRef.current = document.activeElement as HTMLElement | null;
+    document.body.style.overflow = 'hidden';
+    const first = drawerRef.current?.querySelector<HTMLElement>('button');
+    first?.focus();
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onCloseMobile();
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => {
+      document.body.style.overflow = '';
+      document.removeEventListener('keydown', onKeyDown);
+      prevFocusRef.current?.focus?.();
+    };
+  }, [mobileOpen, onCloseMobile]);
+
+  const go = (id: TabId) => {
+    onNavigate(id);
+    onCloseMobile();
   };
 
-  return (
-    <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between shrink-0 h-screen sticky top-0 select-none z-20">
-      <div>
-        {/* Brand Logo */}
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-800/80">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-emerald-500 flex items-center justify-center text-slate-950 font-black shadow-md shadow-emerald-500/20">
-              <GraduationCap className="w-4 h-4 text-slate-950" />
-            </div>
-            <span className="font-extrabold text-lg text-white tracking-tight flex items-center">
-              studyflow<span className="text-emerald-400">.</span>
-            </span>
-          </div>
-          <span className="text-[10px] uppercase font-bold px-2 py-0.5 rounded bg-emerald-950 text-emerald-400 border border-emerald-800/50">
-            OFFLINE
-          </span>
+  const navContent = (isMobile: boolean) => (
+    <>
+      {/* Brand */}
+      <div className="h-16 flex items-center gap-2.5 px-5 border-b border-line">
+        <div className="w-7 h-7 rounded-[8px] bg-accent text-on-accent flex items-center justify-center shrink-0">
+          <GraduationCap className="w-4 h-4" aria-hidden />
         </div>
-
-        {/* Navigation list */}
-        <nav className="p-3 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-emerald-950/70 text-emerald-400 border border-emerald-800/60 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-emerald-400' : 'text-slate-400'}`} />
-                  <span>{item.label}</span>
-                </div>
-              </button>
-            );
-          })}
-        </nav>
+        <span className="font-display text-[15px] font-semibold text-ink">
+          Study Hub
+        </span>
+        {isMobile && (
+          <IconButton
+            icon={X}
+            label="Close navigation"
+            onClick={onCloseMobile}
+            className="ml-auto"
+            size="sm"
+          />
+        )}
       </div>
 
-      {/* Bottom Profile */}
-      <div className="p-4 border-t border-slate-800/80 space-y-3">
-        {/* User Card */}
-        <div
-          onClick={onOpenProfileModal}
-          className="flex items-center gap-3 px-1 pt-1 cursor-pointer hover:bg-slate-800/40 p-1 rounded-xl transition-colors group"
-          title="Click to edit student profile"
+      {/* Nav */}
+      <nav className="px-3 py-2 space-y-0.5 flex-1 overflow-y-auto">
+        {NAV_ITEMS.filter((i) => i.section === 'main').map((item) => {
+          const Icon = item.icon;
+          const active = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-current={active ? 'page' : undefined}
+              onClick={() => go(item.id)}
+              className={cn(
+                'w-full flex items-center gap-3 h-9 px-3 rounded-control text-sm font-medium transition-[background-color,color] duration-150',
+                active
+                  ? 'bg-accent-soft text-accent-ink'
+                  : 'text-ink-2 hover:bg-subtle hover:text-ink'
+              )}
+            >
+              <Icon className="w-[18px] h-[18px] shrink-0" aria-hidden />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+        <div className="text-xs font-medium text-ink-3 px-3 pt-4 pb-1">More</div>
+        {NAV_ITEMS.filter((i) => i.section === 'more').map((item) => {
+          const Icon = item.icon;
+          const active = activeTab === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-current={active ? 'page' : undefined}
+              onClick={() => go(item.id)}
+              className={cn(
+                'w-full flex items-center gap-3 h-9 px-3 rounded-control text-sm font-medium transition-[background-color,color] duration-150',
+                active
+                  ? 'bg-accent-soft text-accent-ink'
+                  : 'text-ink-2 hover:bg-subtle hover:text-ink'
+              )}
+            >
+              <Icon className="w-[18px] h-[18px] shrink-0" aria-hidden />
+              <span>{item.label}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* Footer */}
+      <div className="border-t border-line p-3 space-y-1">
+        <button
+          type="button"
+          onClick={() => {
+            onOpenBackupModal();
+            onCloseMobile();
+          }}
+          className="w-full flex items-center gap-3 h-9 px-3 rounded-control text-sm font-medium text-ink-2 hover:bg-subtle hover:text-ink transition-[background-color,color] duration-150"
         >
-          <div className="w-9 h-9 rounded-full bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-xs font-bold text-white shadow-sm shrink-0">
+          <Database className="w-[18px] h-[18px] shrink-0" aria-hidden />
+          <span>Backup &amp; data</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            onOpenProfileModal();
+            onCloseMobile();
+          }}
+          className="w-full flex items-center gap-3 h-12 px-3 rounded-control text-left hover:bg-subtle transition-[background-color] duration-150"
+        >
+          <span className="w-8 h-8 rounded-full bg-accent-soft text-accent-ink flex items-center justify-center text-xs font-semibold shrink-0">
             {getInitials(studentName)}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-bold text-slate-200 truncate flex items-center justify-between">
-              <span className="truncate">{studentName || 'Student'}</span>
-              <Edit2 className="w-3 h-3 text-slate-500 group-hover:text-emerald-400 shrink-0" />
-            </div>
-            <div className="text-[11px] text-slate-500 truncate">{programName || 'College Program'}</div>
-          </div>
-        </div>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block text-sm font-medium text-ink truncate">
+              {studentName || 'Student'}
+            </span>
+            <span className="block text-xs text-ink-3 truncate">
+              {programName || 'College Program'}
+            </span>
+          </span>
+        </button>
+        <p className="text-xs text-ink-3 px-3 pt-1">
+          Saved on this device · works offline
+        </p>
       </div>
-    </aside>
+    </>
+  );
+
+  return (
+    <>
+      {/* Desktop sidebar */}
+      <aside className="hidden lg:flex w-64 shrink-0 sticky top-0 h-dvh bg-surface border-r border-line flex-col select-none">
+        {navContent(false)}
+      </aside>
+
+      {/* Mobile drawer */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <div className="fixed inset-0 z-50 lg:hidden">
+            <motion.div
+              className="absolute inset-0 bg-black/40"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              onClick={onCloseMobile}
+              aria-hidden
+            />
+            <motion.div
+              ref={drawerRef}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Navigation"
+              className="fixed inset-y-0 left-0 w-72 max-w-[85vw] bg-surface border-r border-line flex flex-col shadow-pop"
+              initial={reducedMotion ? { opacity: 0 } : { transform: 'translateX(-100%)' }}
+              animate={reducedMotion ? { opacity: 1 } : { transform: 'translateX(0)' }}
+              exit={reducedMotion ? { opacity: 0 } : { transform: 'translateX(-100%)' }}
+              transition={{ duration: 0.28, ease: [0.32, 0.72, 0, 1] }}
+            >
+              {navContent(true)}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 };

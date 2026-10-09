@@ -32,6 +32,8 @@ interface ExamSimViewProps {
   onSaveExam: (exam: Exam) => void;
   onSaveAttempt: (attempt: ExamAttempt) => void;
   searchQuery?: string;
+  retakeExam?: Exam | null;
+  onRetakeHandled?: () => void;
 }
 
 const QUESTION_TYPES = ['Multiple Choice', 'True/False', 'Identification'];
@@ -102,6 +104,8 @@ export const ExamSimView: React.FC<ExamSimViewProps> = ({
   onSaveExam,
   onSaveAttempt,
   searchQuery = '',
+  retakeExam = null,
+  onRetakeHandled,
 }) => {
   const [session, setSession] = usePersistentState<ExamSession>(SESSION_KEY, () =>
     defaultSession(courses, cheatsheets)
@@ -283,6 +287,13 @@ export const ExamSimView: React.FC<ExamSimViewProps> = ({
       currentQuestionIdx: 0,
     });
   };
+
+  // Cross-screen request: start a retake (e.g. from Overview/History).
+  useEffect(() => {
+    if (!retakeExam) return;
+    handleRetake(retakeExam);
+    onRetakeHandled?.();
+  }, [retakeExam]);
 
   const handleNewExam = () => {
     patch({
@@ -601,7 +612,7 @@ export const ExamSimView: React.FC<ExamSimViewProps> = ({
 
       {/* Interactive Exam Taking Mode */}
       {phase === 'taking' && currentExam && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6 animate-in fade-in">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
             <div>
               <span className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider block">
@@ -739,7 +750,7 @@ export const ExamSimView: React.FC<ExamSimViewProps> = ({
 
       {/* Results Mode */}
       {phase === 'results' && lastAttempt && currentExam && gradedResults && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6 animate-in fade-in">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
             <div>
               <h2 className="text-base font-black text-gray-900">Exam Results</h2>
@@ -849,7 +860,7 @@ export const ExamSimView: React.FC<ExamSimViewProps> = ({
 
       {/* Read-only Attempt Review */}
       {phase === 'review' && reviewedAttempt && review && (
-        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6 animate-in fade-in">
+        <div className="bg-white rounded-2xl border border-gray-200 p-6 shadow-sm space-y-6">
           <div className="flex items-center justify-between pb-3 border-b border-gray-100">
             <div>
               <h2 className="text-base font-black text-gray-900">{reviewedAttempt.examTitle}</h2>

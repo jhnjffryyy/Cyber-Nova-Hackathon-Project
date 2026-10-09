@@ -1,14 +1,93 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Segoe UI Variable Display", "Segoe UI Variable", "Segoe UI", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-mono: ui-monospace, "Cascadia Code", "SF Mono", Consolas, monospace;
+
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+
+  --radius-control: 0.625rem;
+  --radius-card: 1rem;
+
+  --shadow-card: 0 1px 2px 0 rgb(16 24 20 / 0.04), 0 1px 3px 0 rgb(16 24 20 / 0.05);
+  --shadow-pop: 0 16px 40px -12px rgb(16 24 20 / 0.22), 0 4px 10px -4px rgb(16 24 20 / 0.08);
+}
+
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-subtle: var(--subtle);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-ink-3: var(--ink-3);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-ink: var(--accent-ink);
+  --color-on-accent: var(--on-accent);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-ink: var(--success-ink);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-ink: var(--warning-ink);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  --color-danger-ink: var(--danger-ink);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-info-ink: var(--info-ink);
+}
+
+@layer base {
+  :root {
+    color-scheme: light;
+    --canvas: #f7f7f4; --surface: #ffffff; --subtle: #f1f1ed;
+    --line: #e6e5df; --line-strong: #d4d3cb;
+    --ink: #17191a; --ink-2: #4a4f4d; --ink-3: #6b706d;
+    --accent: #1f6f5c; --accent-hover: #185a4b; --accent-soft: #e7f2ee; --accent-ink: #17574a; --on-accent: #ffffff;
+    --success: #1f7a4d; --success-soft: #e8f5ee; --success-ink: #17603c;
+    --warning: #b45309; --warning-soft: #fdf3e2; --warning-ink: #8a4005;
+    --danger: #be123c; --danger-soft: #fdecef; --danger-ink: #9f1239;
+    --info: #2563eb; --info-soft: #eaf1fe; --info-ink: #1d4ed8;
+  }
+  .dark {
+    color-scheme: dark;
+    --canvas: #0f1211; --surface: #161a19; --subtle: #1d2221;
+    --line: #262c2a; --line-strong: #343b39;
+    --ink: #eceeec; --ink-2: #b4bab7; --ink-3: #8a918e;
+    --accent: #3fb391; --accent-hover: #5cc4a4; --accent-soft: #183029; --accent-ink: #7fd6b9; --on-accent: #07140f;
+    --success: #46c07f; --success-soft: #15291f; --success-ink: #86e0ad;
+    --warning: #f0a742; --warning-soft: #2e2414; --warning-ink: #f6c57a;
+    --danger: #f26d85; --danger-soft: #321a20; --danger-ink: #f7a1b1;
+    --info: #6aa1ff; --info-soft: #172238; --info-ink: #a9c7ff;
+  }
+  html { -webkit-tap-highlight-color: transparent; }
+  body { background-color: var(--canvas); color: var(--ink); font-family: var(--font-sans); -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; }
+  ::selection { background-color: var(--accent-soft); color: var(--ink); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button, a, [role="button"], label { touch-action: manipulation; }
+}
+
 @layer utilities {
-  /* Hide scrollbar for clean UI in tabs */
-  .no-scrollbar::-webkit-scrollbar {
-    display: none;
-  }
-  .no-scrollbar {
-    -ms-overflow-style: none;
-    scrollbar-width: none;
-  }
+  .no-scrollbar::-webkit-scrollbar { display: none; }
+  .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+  .press { transition: transform 160ms var(--ease-out); }
+  .press:active { transform: scale(0.97); }
+  .view-enter { animation: view-in 180ms var(--ease-out); }
+}
+
+@keyframes view-in { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .press:active { transform: none; }
 }
 
 @media print {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   FileText,
   Sparkles,
@@ -25,6 +25,8 @@ interface CheatsheetGeneratorViewProps {
   onSaveCheatsheet: (sheet: Cheatsheet) => void;
   onDeleteCheatsheet: (id: string) => void;
   searchQuery?: string;
+  focusSheetId?: string | null;
+  onFocusSheetHandled?: () => void;
 }
 
 interface ClutchSession {
@@ -44,6 +46,8 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
   onSaveCheatsheet,
   onDeleteCheatsheet,
   searchQuery = '',
+  focusSheetId = null,
+  onFocusSheetHandled,
 }) => {
   const [session, setSession] = usePersistentState<ClutchSession>(SESSION_KEY, () => ({
     selectedCourseName: courses.length > 0 ? courses[0].title : 'None',
@@ -54,6 +58,15 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
     debugEnabled: false,
   }));
   const patch = (p: Partial<ClutchSession>) => setSession((prev) => ({ ...prev, ...p }));
+
+  // Cross-screen request: open a specific sheet (e.g. from Overview).
+  useEffect(() => {
+    if (!focusSheetId) return;
+    if (cheatsheets.some((s) => s.id === focusSheetId)) {
+      patch({ selectedSheetId: focusSheetId });
+    }
+    onFocusSheetHandled?.();
+  }, [focusSheetId]);
   const {
     selectedCourseName, customSubjectName, notesText, extractedFileMeta,
     selectedSheetId, debugEnabled,

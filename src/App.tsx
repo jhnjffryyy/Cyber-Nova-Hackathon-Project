@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { AnimatePresence, MotionConfig, motion } from 'motion/react';
 import { Minus, Square, X } from 'lucide-react';
 import { Course, Exam, ExamAttempt, Cheatsheet, Task } from './types';
 import {
@@ -18,6 +19,8 @@ import {
   saveStoredStudentProfile,
 } from './lib/storage';
 import { usePomodoro } from './lib/usePomodoro';
+import { useHashTab } from './lib/useHashTab';
+import { IconButton } from './components/ui';
 import { Sidebar } from './components/Sidebar';
 import { TopNavbar } from './components/TopNavbar';
 import { OverviewView } from './components/OverviewView';
@@ -25,31 +28,29 @@ import { ScheduleView } from './components/ScheduleView';
 import { TodoListView } from './components/TodoListView';
 import { CheatsheetGeneratorView } from './components/CheatsheetGeneratorView';
 import { ExamSimView } from './components/ExamSimView';
+import { HistoryView } from './components/HistoryView';
 import { PomodoroView } from './components/PomodoroView';
 import { DesktopExeView } from './components/DesktopExeView';
 import { DesktopExeModal } from './components/DesktopExeModal';
 import { BackupModal } from './components/BackupModal';
 import { ProfileModal } from './components/ProfileModal';
 
-type TabId = 'overview' | 'schedule' | 'tasks' | 'cheatsheets' | 'exam' | 'pomodoro' | 'desktop';
-
 export default function App() {
-  const [activeTab, setActiveTab] = useState<TabId>('overview');
+  const [activeTab, setActiveTab] = useHashTab();
   const [searchQuery, setSearchQuery] = useState('');
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-  // Stored application state (Starts clean - zero dummy data)
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [exams, setExams] = useState<Exam[]>([]);
-  const [attempts, setAttempts] = useState<ExamAttempt[]>([]);
-  const [cheatsheets, setCheatsheets] = useState<Cheatsheet[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-
-  // Student Profile
-  const [studentName, setStudentName] = useState<string>('Student');
-  const [programName, setProgramName] = useState<string>('College Program');
-
-  // Desktop Windows title bar simulation
-  const [isDesktopFrame, setIsDesktopFrame] = useState<boolean>(false);
+  // Stored application state (lazy init avoids an empty-state flash)
+  const [courses, setCourses] = useState<Course[]>(getStoredCourses);
+  const [exams, setExams] = useState<Exam[]>(getStoredExams);
+  const [attempts, setAttempts] = useState<ExamAttempt[]>(getStoredAttempts);
+  const [cheatsheets, setCheatsheets] = useState<Cheatsheet[]>(getStoredCheatsheets);
+  const [tasks, setTasks] = useState<Task[]>(getStoredTasks);
+  const [isDesktopFrame, setIsDesktopFrame] = useState<boolean>(getStoredDesktopFrame);
+  const [{ name: studentName, program: programName }, setProfile] = useState<{
+    name: string;
+    program: string;
+  }>(getStoredStudentProfile);
 
   // Pomodoro timer (single instance so it survives tab switches)
   const pomodoro = usePomodoro();
@@ -59,18 +60,25 @@ export default function App() {
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
-  useEffect(() => {
-    setCourses(getStoredCourses());
-    setExams(getStoredExams());
-    setAttempts(getStoredAttempts());
-    setCheatsheets(getStoredCheatsheets());
-    setTasks(getStoredTasks());
-    setIsDesktopFrame(getStoredDesktopFrame());
+  // Cross-screen focus requests
+  const [focusSheetId, setFocusSheetId] = useState<string | null>(null);
+  const [retakeExam, setRetakeExam] = useState<Exam | null>(null);
+  const [historyAttemptId, setHistoryAttemptId] = useState<string | null>(null);
 
-    const profile = getStoredStudentProfile();
-    setStudentName(profile.name);
-    setProgramName(profile.program);
-  }, []);
+  const openCheatsheet = (id: string) => {
+    setFocusSheetId(id);
+    setActiveTab('cheatsheets');
+  };
+
+  const retake = (exam: Exam) => {
+    setRetakeExam(exam);
+    setActiveTab('exam');
+  };
+
+  const openAttempt = (id: string) => {
+    setHistoryAttemptId(id);
+    setActiveTab('history');
+  };
 
   // Auto-dismiss the pomodoro toast
   useEffect(() => {
@@ -85,64 +93,89 @@ export default function App() {
   };
 
   const handleUpdateProfile = (name: string, program: string) => {
-    setStudentName(name);
-    setProgramName(program);
+    setProfile({ name, program });
     saveStoredStudentProfile(name, program);
   };
 
-  // Handlers for data updates
+  // Handlers for data updates (updater form: save inside the setter)
   const handleAddCourse = (course: Course) => {
-    const updated = [...courses, course];
-    setCourses(updated);
-    saveStoredCourses(updated);
+    setCourses((prev) => {
+      const next = [...prev, course];
+      saveStoredCourses(next);
+      return next;
+    });
   };
 
   const handleDeleteCourse = (id: string) => {
-    const updated = courses.filter((c) => c.id !== id);
-    setCourses(updated);
-    saveStoredCourses(updated);
+    setCourses((prev) => {
+      const next = prev.filter((c) => c.id !== id);
+      saveStoredCourses(next);
+      return next;
+    });
   };
 
   const handleAddTask = (task: Task) => {
-    const updated = [task, ...tasks];
-    setTasks(updated);
-    saveStoredTasks(updated);
+    setTasks((prev) => {
+      const next = [task, ...prev];
+      saveStoredTasks(next);
+      return next;
+    });
+  };
+
+  const handleUpdateTask = (task: Task) => {
+    setTasks((prev) => {
+      const next = prev.map((t) => (t.id === task.id ? task : t));
+      saveStoredTasks(next);
+      return next;
+    });
   };
 
   const handleToggleTask = (id: string) => {
-    const updated = tasks.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t));
-    setTasks(updated);
-    saveStoredTasks(updated);
+    setTasks((prev) => {
+      const next = prev.map((t) => (t.id === id ? { ...t, completed: !t.completed } : t));
+      saveStoredTasks(next);
+      return next;
+    });
   };
 
   const handleDeleteTask = (id: string) => {
-    const updated = tasks.filter((t) => t.id !== id);
-    setTasks(updated);
-    saveStoredTasks(updated);
+    setTasks((prev) => {
+      const next = prev.filter((t) => t.id !== id);
+      saveStoredTasks(next);
+      return next;
+    });
   };
 
   const handleSaveCheatsheet = (sheet: Cheatsheet) => {
-    const updated = [sheet, ...cheatsheets.filter((s) => s.id !== sheet.id)];
-    setCheatsheets(updated);
-    saveStoredCheatsheets(updated);
+    setCheatsheets((prev) => {
+      const next = [sheet, ...prev.filter((s) => s.id !== sheet.id)];
+      saveStoredCheatsheets(next);
+      return next;
+    });
   };
 
   const handleDeleteCheatsheet = (id: string) => {
-    const updated = cheatsheets.filter((s) => s.id !== id);
-    setCheatsheets(updated);
-    saveStoredCheatsheets(updated);
+    setCheatsheets((prev) => {
+      const next = prev.filter((s) => s.id !== id);
+      saveStoredCheatsheets(next);
+      return next;
+    });
   };
 
   const handleSaveExam = (exam: Exam) => {
-    const updated = [exam, ...exams.filter((e) => e.id !== exam.id)];
-    setExams(updated);
-    saveStoredExams(updated);
+    setExams((prev) => {
+      const next = [exam, ...prev.filter((e) => e.id !== exam.id)];
+      saveStoredExams(next);
+      return next;
+    });
   };
 
   const handleSaveAttempt = (attempt: ExamAttempt) => {
-    const updated = [...attempts, attempt];
-    setAttempts(updated);
-    saveStoredAttempts(updated);
+    setAttempts((prev) => {
+      const next = [...prev, attempt];
+      saveStoredAttempts(next);
+      return next;
+    });
   };
 
   const handleRefreshAllData = () => {
@@ -151,174 +184,220 @@ export default function App() {
     setAttempts(getStoredAttempts());
     setCheatsheets(getStoredCheatsheets());
     setTasks(getStoredTasks());
-    const profile = getStoredStudentProfile();
-    setStudentName(profile.name);
-    setProgramName(profile.program);
+    setProfile(getStoredStudentProfile());
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans text-gray-900 selection:bg-emerald-500/20 antialiased">
-      {/* Optional Simulated Native Windows 11 Title Bar */}
-      {isDesktopFrame && (
-        <div className="h-8 bg-slate-950 text-slate-300 flex items-center justify-between px-3 text-xs border-b border-slate-800 select-none z-50">
-          <div className="flex items-center gap-2">
-            <img src="/icon.svg" alt="App Icon" className="w-4 h-4" />
-            <span className="font-semibold text-slate-200">
-              StudyFlow AI — Windows Standalone Desktop Edition
-            </span>
-          </div>
-          <div className="flex items-center">
-            <button
-              onClick={() => alert('Simulated Windows Minimize: In actual .EXE this minimizes to taskbar')}
-              className="w-10 h-8 flex items-center justify-center hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-200"
-              title="Minimize"
-            >
-              <Minus className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => alert('Simulated Windows Maximize: In actual .EXE this toggles fullscreen')}
-              className="w-10 h-8 flex items-center justify-center hover:bg-slate-800 transition-colors text-slate-400 hover:text-slate-200"
-              title="Maximize"
-            >
-              <Square className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => handleToggleDesktopFrame(false)}
-              className="w-10 h-8 flex items-center justify-center hover:bg-rose-600 transition-colors text-slate-400 hover:text-white"
-              title="Hide Desktop Title Bar"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
+    <MotionConfig reducedMotion="user">
+      <div className="min-h-dvh bg-canvas text-ink flex flex-col font-sans">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[60] focus:bg-surface focus:text-ink focus:px-3 focus:py-2 focus:rounded-control focus:border focus:border-line focus:shadow-pop"
+        >
+          Skip to content
+        </a>
 
-      {/* Main Container */}
-      <div className="flex-1 flex min-w-0">
-        {/* Left Sidebar */}
-        <Sidebar
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          studentName={studentName}
-          programName={programName}
-          onOpenProfileModal={() => setIsProfileModalOpen(true)}
-        />
+        {/* Optional Simulated Native Windows 11 Title Bar */}
+        {isDesktopFrame && (
+          <div className="h-8 bg-[#0f1211] text-[#eceeec] flex items-center justify-between px-3 text-xs select-none z-50">
+            <div className="flex items-center gap-2">
+              <img src="/icon.svg" alt="" className="w-4 h-4" />
+              <span className="font-semibold">
+                Study Hub — Windows Standalone Desktop Edition
+              </span>
+            </div>
+            <div className="flex items-center">
+              <button
+                type="button"
+                aria-label="Minimize"
+                onClick={() => alert('Simulated Windows Minimize: In actual .EXE this minimizes to taskbar')}
+                className="w-10 h-8 flex items-center justify-center hover:bg-white/10 transition-[background-color] duration-150"
+              >
+                <Minus className="w-3.5 h-3.5" />
+              </button>
+              <button
+                type="button"
+                aria-label="Maximize"
+                onClick={() => alert('Simulated Windows Maximize: In actual .EXE this toggles fullscreen')}
+                className="w-10 h-8 flex items-center justify-center hover:bg-white/10 transition-[background-color] duration-150"
+              >
+                <Square className="w-3 h-3" />
+              </button>
+              <button
+                type="button"
+                aria-label="Hide desktop title bar"
+                onClick={() => handleToggleDesktopFrame(false)}
+                className="w-10 h-8 flex items-center justify-center hover:bg-danger hover:text-white transition-[background-color] duration-150"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        )}
 
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col min-w-0 overflow-y-auto">
-          <TopNavbar
+        {/* Main Container */}
+        <div className="flex-1 flex min-w-0">
+          <Sidebar
             activeTab={activeTab}
-            searchQuery={searchQuery}
+            onNavigate={setActiveTab}
             studentName={studentName}
-            setSearchQuery={setSearchQuery}
-            onOpenDesktopModal={() => setIsDesktopModalOpen(true)}
+            programName={programName}
+            onOpenProfileModal={() => setIsProfileModalOpen(true)}
+            onOpenBackupModal={() => setIsBackupModalOpen(true)}
+            mobileOpen={mobileNavOpen}
+            onCloseMobile={() => setMobileNavOpen(false)}
           />
 
-          <main className="p-6 md:p-8 max-w-7xl w-full mx-auto flex-1">
-            {activeTab === 'overview' && (
-              <OverviewView
-                courses={courses}
-                tasks={tasks}
-                cheatsheetsCount={cheatsheets.length}
-                studentName={studentName}
-                searchQuery={searchQuery}
-                onNavigateTab={(tab) => setActiveTab(tab)}
-                onToggleTask={handleToggleTask}
-                pomodoro={pomodoro}
-              />
-            )}
+          {/* Main Content Area */}
+          <div className="flex-1 flex flex-col min-w-0">
+            <TopNavbar
+              activeTab={activeTab}
+              searchQuery={searchQuery}
+              setSearchQuery={setSearchQuery}
+              onOpenMenu={() => setMobileNavOpen(true)}
+              onOpenDesktopModal={() => setIsDesktopModalOpen(true)}
+            />
 
-            {activeTab === 'schedule' && (
-              <ScheduleView
-                courses={courses}
-                onAddCourse={handleAddCourse}
-                onDeleteCourse={handleDeleteCourse}
-                searchQuery={searchQuery}
-              />
-            )}
+            <main id="main" className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex-1">
+              <div key={activeTab} className="view-enter">
+                {activeTab === 'overview' && (
+                  <OverviewView
+                    courses={courses}
+                    tasks={tasks}
+                    cheatsheets={cheatsheets}
+                    exams={exams}
+                    attempts={attempts}
+                    studentName={studentName}
+                    searchQuery={searchQuery}
+                    onNavigateTab={setActiveTab}
+                    onToggleTask={handleToggleTask}
+                    onOpenCheatsheet={openCheatsheet}
+                    onOpenAttempt={openAttempt}
+                    pomodoro={pomodoro}
+                  />
+                )}
 
-            {activeTab === 'tasks' && (
-              <TodoListView
-                tasks={tasks}
-                courses={courses}
-                onAddTask={handleAddTask}
-                onToggleTask={handleToggleTask}
-                onDeleteTask={handleDeleteTask}
-                searchQuery={searchQuery}
-              />
-            )}
+                {activeTab === 'schedule' && (
+                  <ScheduleView
+                    courses={courses}
+                    onAddCourse={handleAddCourse}
+                    onDeleteCourse={handleDeleteCourse}
+                    searchQuery={searchQuery}
+                  />
+                )}
 
-            {activeTab === 'cheatsheets' && (
-              <CheatsheetGeneratorView
-                courses={courses}
-                cheatsheets={cheatsheets}
-                onSaveCheatsheet={handleSaveCheatsheet}
-                onDeleteCheatsheet={handleDeleteCheatsheet}
-                searchQuery={searchQuery}
-              />
-            )}
+                {activeTab === 'tasks' && (
+                  <TodoListView
+                    tasks={tasks}
+                    courses={courses}
+                    onAddTask={handleAddTask}
+                    onUpdateTask={handleUpdateTask}
+                    onToggleTask={handleToggleTask}
+                    onDeleteTask={handleDeleteTask}
+                    searchQuery={searchQuery}
+                  />
+                )}
 
-            {activeTab === 'exam' && (
-              <ExamSimView
-                courses={courses}
-                cheatsheets={cheatsheets}
-                exams={exams}
-                attempts={attempts}
-                onSaveExam={handleSaveExam}
-                onSaveAttempt={handleSaveAttempt}
-                searchQuery={searchQuery}
-              />
-            )}
+                {activeTab === 'cheatsheets' && (
+                  <CheatsheetGeneratorView
+                    courses={courses}
+                    cheatsheets={cheatsheets}
+                    onSaveCheatsheet={handleSaveCheatsheet}
+                    onDeleteCheatsheet={handleDeleteCheatsheet}
+                    searchQuery={searchQuery}
+                    focusSheetId={focusSheetId}
+                    onFocusSheetHandled={() => setFocusSheetId(null)}
+                  />
+                )}
 
-            {activeTab === 'pomodoro' && <PomodoroView pomodoro={pomodoro} />}
+                {activeTab === 'exam' && (
+                  <ExamSimView
+                    courses={courses}
+                    cheatsheets={cheatsheets}
+                    exams={exams}
+                    attempts={attempts}
+                    onSaveExam={handleSaveExam}
+                    onSaveAttempt={handleSaveAttempt}
+                    searchQuery={searchQuery}
+                    retakeExam={retakeExam}
+                    onRetakeHandled={() => setRetakeExam(null)}
+                  />
+                )}
 
-            {activeTab === 'desktop' && (
-              <DesktopExeView
-                isDesktopFrame={isDesktopFrame}
-                setIsDesktopFrame={handleToggleDesktopFrame}
-                onOpenModelModal={() => {}}
-              />
-            )}
-          </main>
+                {activeTab === 'history' && (
+                  <HistoryView
+                    attempts={attempts}
+                    historyAttemptId={historyAttemptId}
+                    onHistoryAttemptHandled={() => setHistoryAttemptId(null)}
+                  />
+                )}
+
+                {activeTab === 'pomodoro' && <PomodoroView pomodoro={pomodoro} />}
+
+                {activeTab === 'desktop' && (
+                  <DesktopExeView
+                    isDesktopFrame={isDesktopFrame}
+                    setIsDesktopFrame={handleToggleDesktopFrame}
+                    onOpenModelModal={() => {}}
+                  />
+                )}
+              </div>
+            </main>
+          </div>
         </div>
+
+        {/* Pomodoro toast (visible on every page) */}
+        <AnimatePresence>
+          {pomodoro.toast && (
+            <motion.div
+              key={pomodoro.toast.id}
+              role="status"
+              aria-live="polite"
+              className="fixed top-3 right-3 left-3 sm:left-auto sm:w-96 z-50"
+              initial={{ opacity: 0, transform: 'translateY(-8px)' }}
+              animate={{ opacity: 1, transform: 'translateY(0px)' }}
+              exit={{ opacity: 0, transform: 'translateY(-8px)' }}
+              transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }}
+            >
+              <div className="bg-surface border border-line rounded-card shadow-pop px-4 py-3 flex items-center gap-3">
+                <span className="text-sm text-ink font-medium flex-1">
+                  {pomodoro.toast.message}
+                </span>
+                <IconButton
+                  icon={X}
+                  label="Dismiss"
+                  size="sm"
+                  onClick={pomodoro.dismissToast}
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Windows .EXE / Desktop Launcher Modal */}
+        <DesktopExeModal
+          isOpen={isDesktopModalOpen}
+          onClose={() => setIsDesktopModalOpen(false)}
+          isDesktopFrame={isDesktopFrame}
+          setIsDesktopFrame={handleToggleDesktopFrame}
+        />
+
+        {/* Data Backup Modal */}
+        <BackupModal
+          isOpen={isBackupModalOpen}
+          onClose={() => setIsBackupModalOpen(false)}
+          onRefreshData={handleRefreshAllData}
+        />
+
+        {/* Profile Edit Modal */}
+        <ProfileModal
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          studentName={studentName}
+          programName={programName}
+          onUpdateProfile={handleUpdateProfile}
+        />
       </div>
-
-      {/* Pomodoro toast (visible on every page) */}
-      {pomodoro.toast && (
-        <div className="fixed top-4 right-4 z-50 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 flex items-center gap-3 text-xs animate-in fade-in">
-          <span className="text-gray-800 font-medium">{pomodoro.toast.message}</span>
-          <button
-            onClick={pomodoro.dismissToast}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded"
-          >
-            <X className="w-3.5 h-3.5" />
-          </button>
-        </div>
-      )}
-
-      {/* Windows .EXE / Desktop Launcher Modal */}
-      <DesktopExeModal
-        isOpen={isDesktopModalOpen}
-        onClose={() => setIsDesktopModalOpen(false)}
-        isDesktopFrame={isDesktopFrame}
-        setIsDesktopFrame={handleToggleDesktopFrame}
-      />
-
-      {/* Data Backup Modal */}
-      <BackupModal
-        isOpen={isBackupModalOpen}
-        onClose={() => setIsBackupModalOpen(false)}
-        onRefreshData={handleRefreshAllData}
-      />
-
-      {/* Profile Edit Modal */}
-      <ProfileModal
-        isOpen={isProfileModalOpen}
-        onClose={() => setIsProfileModalOpen(false)}
-        studentName={studentName}
-        programName={programName}
-        onUpdateProfile={handleUpdateProfile}
-      />
-    </div>
+    </MotionConfig>
   );
 }

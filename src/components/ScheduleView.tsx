@@ -267,7 +267,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
       {/* Add Class Modal */}
       {isAddClassOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-gray-200">
             <div className="flex items-center justify-between pb-2 border-b border-gray-100">
               <h3 className="text-base font-black text-gray-900">Add Subject to Timetable</h3>
