@@ -1,17 +1,25 @@
 {
-  "name": "StudyFlow AI - Offline Student Workspace",
-  "short_name": "StudyFlow",
-  "description": "Offline AI student dashboard powered by Qwen 2.5 3B with Desktop Windows EXE support",
-  "start_url": "/",
+  "id": "./",
+  "name": "Study Hub - Student Workspace",
+  "short_name": "Study Hub",
+  "description": "A local-first student workspace for classes, tasks, study notes, and practice exams.",
+  "start_url": "./",
+  "scope": "./",
   "display": "standalone",
-  "background_color": "#022c22",
-  "theme_color": "#064e3b",
+  "background_color": "#f7f7f4",
+  "theme_color": "#f7f7f4",
   "icons": [
     {
-      "src": "/icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
-      "purpose": "any maskable"
+      "src": "./icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }

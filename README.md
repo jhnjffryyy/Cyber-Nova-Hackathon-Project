@@ -1,6 +1,6 @@
 # Cyber Nova Hackathon Project — Study Hub
 
-Welcome to the **Cyber Nova Hackathon Project**, an npm monorepo for Study Hub, a local-first student workspace. Study Hub brings class schedules, academic tasks, study notes, practice exams, study sessions, and Windows desktop packaging together in one application.
+Welcome to the **Cyber Nova Hackathon Project**, an npm monorepo for Study Hub, a local-first student workspace. Study Hub brings class schedules, academic tasks, study notes, practice exams, and study sessions together in an installable Progressive Web App (PWA).
 
 ---
 
@@ -11,9 +11,8 @@ This repository uses npm workspaces. Each application lives under `apps/`; Study
 ```text
 Cyber-Nova-Hackathon-Project/
 ├── apps/
-│   └── study-hub/                # Study Hub web app and Windows desktop app
-│       ├── electron/             # Electron desktop entry point
-│       ├── public/               # App icons and web manifest
+│   └── study-hub/                # Study Hub web app and PWA
+│       ├── public/               # PWA icons, web manifest, service worker
 │       ├── scripts/              # Feature and pipeline tests
 │       ├── src/                  # React application and shared logic
 │       ├── tests/                # Test fixtures
@@ -25,7 +24,7 @@ Cyber-Nova-Hackathon-Project/
 └── README.md                     # Repository documentation
 ```
 
-Generated `dist/` and `dist-electron/` build outputs are ignored by Git. Build them locally from the Study Hub workspace when needed.
+Generated `dist/` build output is ignored by Git. Build the web app locally when needed; no desktop executable or launcher scripts are required.
 
 ---
 
@@ -38,7 +37,7 @@ Generated `dist/` and `dist-electron/` build outputs are ignored by Git. Build t
 - **Build and development server:** Vite 8
 - **Styling:** Tailwind CSS v4
 - **Icons:** `lucide-react`
-- **Desktop packaging:** Electron 44 and electron-builder
+- **Installable app:** Progressive Web App manifest and service worker
 - **Tests:** TypeScript test scripts run with `tsx`
 - **Local study assistance:** In-browser and local-model workflows, with optional external integrations where configured
 
@@ -48,7 +47,7 @@ Generated `dist/` and `dist-electron/` build outputs are ignored by Git. Build t
 
 ### 1. Prerequisites
 
-- [Node.js](https://nodejs.org/) 22.12 or newer (required by the Electron toolchain)
+- [Node.js](https://nodejs.org/) 22.12 or newer (required by the Vite build toolchain)
 - [Git](https://git-scm.com/)
 - npm (included with Node.js)
 
@@ -75,7 +74,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-For app-specific offline setup and desktop launcher instructions, see [apps/study-hub/README.md](apps/study-hub/README.md).
+To install Study Hub as a PWA, run `npm run build` followed by `npm run preview`, then open `http://localhost:4173` in Edge or Chrome. Use the app's **Run in VS Code** panel or the browser menu to install it. For full instructions, see [apps/study-hub/README.md](apps/study-hub/README.md).
 
 ---
 
@@ -89,7 +88,7 @@ Run these commands from the repository root:
 | `npm run build` | Builds the Study Hub production web bundle |
 | `npm run lint` | Runs the Study Hub TypeScript check |
 | `npm test` | Runs the Study Hub test scripts |
-| `npm run build:exe` | Builds and packages the Windows desktop application |
+| `npm run preview` | Previews the production PWA at `http://localhost:4173` |
 
 ---
 

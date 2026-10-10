@@ -1,6 +1,6 @@
 {
-  "name": "StudyFlow AI - Offline School Dashboard & Desktop App",
-  "description": "All-in-one offline student dashboard powered by Qwen 2.5 3B. Parse COR schedules, manage classes, generate mock exams, study with AI cheatsheets, and track tasks with desktop Windows EXE support.",
+  "name": "Study Hub - Student Workspace",
+  "description": "A local-first student workspace for schedules, tasks, study notes, practice exams, and focused study sessions.",
   "requestFramePermissions": [],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

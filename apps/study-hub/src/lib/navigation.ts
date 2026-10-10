@@ -35,7 +35,7 @@ export const NAV_ITEMS: NavItem[] = [
   { id: 'exam', label: 'Exam Simulator', icon: GraduationCap, section: 'main' },
   { id: 'history', label: 'History', icon: History, section: 'main' },
   { id: 'pomodoro', label: 'Pomodoro', icon: Timer, section: 'main' },
-  { id: 'desktop', label: 'Desktop app', icon: MonitorDown, section: 'more' },
+  { id: 'desktop', label: 'Run in VS Code', icon: MonitorDown, section: 'more' },
 ];
 
 export const isTabId = (v: string): v is TabId =>

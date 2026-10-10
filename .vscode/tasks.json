@@ -22,18 +22,11 @@
       "detail": "Starts local offline Vite dev server at http://localhost:3000"
     },
     {
-      "type": "npm",
-      "script": "build:exe",
-      "problemMatcher": [],
-      "label": "npm: build:exe",
-      "detail": "Compiles the app into a standalone Windows .EXE in dist-electron/"
-    },
-    {
       "type": "shell",
       "command": "npm install",
       "problemMatcher": [],
       "label": "npm: install dependencies",
-      "detail": "Installs all node_modules so the laptop can run completely offline"
+      "detail": "Installs dependencies for local development"
     }
   ]
 }

@@ -1,17 +1,16 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Menu, Search, Monitor, Sun, Moon } from 'lucide-react';
 import { formatShortDate } from '../lib/dates';
 import { useToday } from '../lib/useToday';
 import { getNavItem, TabId } from '../lib/navigation';
 import { useTheme, ThemePref } from '../lib/theme';
-import { Button, IconButton, Input } from './ui';
+import { IconButton, Input } from './ui';
 
 interface TopNavbarProps {
   activeTab: TabId;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   onOpenMenu: () => void;
-  onOpenDesktopModal: () => void;
 }
 
 const THEME_ORDER: ThemePref[] = ['system', 'light', 'dark'];
@@ -26,38 +25,10 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
   searchQuery,
   setSearchQuery,
   onOpenMenu,
-  onOpenDesktopModal,
 }) => {
   const today = useToday();
-  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
-  const [isStandalone, setIsStandalone] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const [theme, setTheme] = useTheme();
-
-  useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches) {
-      setIsStandalone(true);
-    }
-    const handler = (e: Event) => {
-      e.preventDefault();
-      setDeferredPrompt(e);
-    };
-    window.addEventListener('beforeinstallprompt', handler);
-    return () => window.removeEventListener('beforeinstallprompt', handler);
-  }, []);
-
-  const handleInstallApp = async () => {
-    if (deferredPrompt) {
-      deferredPrompt.prompt();
-      const choice = await deferredPrompt.userChoice;
-      if (choice.outcome === 'accepted') {
-        setIsStandalone(true);
-      }
-      setDeferredPrompt(null);
-    } else {
-      onOpenDesktopModal();
-    }
-  };
 
   const cycleTheme = () => {
     const next = THEME_ORDER[(THEME_ORDER.indexOf(theme) + 1) % THEME_ORDER.length];
@@ -114,11 +85,6 @@ export const TopNavbar: React.FC<TopNavbarProps> = ({
             variant="secondary"
           />
 
-          {deferredPrompt && !isStandalone && (
-            <Button variant="secondary" size="sm" onClick={handleInstallApp}>
-              Install app
-            </Button>
-          )}
         </div>
       </div>
 

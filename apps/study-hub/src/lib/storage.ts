@@ -10,7 +10,6 @@ const STORAGE_KEYS = {
   TASKS: 'studyflow_tasks_v4_clean',
   LLM_MODE: 'studyflow_llm_mode_v4',
   GGUF_ENDPOINT: 'studyflow_gguf_endpoint_v4',
-  DESKTOP_FRAME: 'studyflow_desktop_frame_v4',
   STUDENT_NAME: 'studyflow_student_name_v4',
   PROGRAM_NAME: 'studyflow_program_name_v4',
   POMODORO_SETTINGS: 'studyflow_pomodoro_settings_v1',
@@ -157,20 +156,6 @@ export const getStoredGGUFEndpoint = (): string => {
 export const saveStoredGGUFEndpoint = (endpoint: string): void => {
   try {
     localStorage.setItem(STORAGE_KEYS.GGUF_ENDPOINT, endpoint);
-  } catch {}
-};
-
-export const getStoredDesktopFrame = (): boolean => {
-  try {
-    return localStorage.getItem(STORAGE_KEYS.DESKTOP_FRAME) === 'true';
-  } catch {
-    return false;
-  }
-};
-
-export const saveStoredDesktopFrame = (enabled: boolean): void => {
-  try {
-    localStorage.setItem(STORAGE_KEYS.DESKTOP_FRAME, String(enabled));
   } catch {}
 };
 

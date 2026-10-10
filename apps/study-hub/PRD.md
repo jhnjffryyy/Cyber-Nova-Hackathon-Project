@@ -7,9 +7,7 @@
 
 ## Short Description
 
-Study Hub is a local-first student workspace for organizing classes and tasks, turning course materials into review notes and practice exams, and tracking study sessions. It is designed to work offline and can also be run as a Windows desktop app.
-
-*This description is inferred from the project README, metadata, and current application navigation because no short description was supplied.*
+Study Hub is a local-first student workspace for organizing classes and tasks, turning course materials into review notes and practice exams, and tracking study sessions. It can be installed as a Progressive Web App (PWA), with cached app-shell access available offline.
 
 ## Problem
 
@@ -20,7 +18,7 @@ Students often keep schedules, assignments, study materials, practice tests, and
 1. Give students one place to organize their academic workload and see what needs attention.
 2. Help students turn their own course materials into focused review content and practice.
 3. Make essential study workflows available on the user's device, including offline use where supported.
-4. Make the application straightforward to launch locally or package for Windows.
+4. Make the application straightforward to download, run locally in VS Code, and install as a PWA.
 
 ## Intended Users
 
@@ -31,7 +29,7 @@ Students often keep schedules, assignments, study materials, practice tests, and
 ## Scope Baseline
 
 - **Discovery method**: Review of the project README, application navigation, project metadata, and existing feature descriptions.
-- **Items discovered**: Eight primary application areas: Overview, Schedule, To-do list, Clutch Notes, Exam Simulator, History, Pomodoro, and Desktop app.
+- **Items discovered**: Eight primary application areas: Overview, Schedule, To-do list, Clutch Notes, Exam Simulator, History, Pomodoro, and the Run in VS Code/PWA guide.
 - **Items in scope**: All eight areas, as they form the current Study Hub product experience.
 
 ## User Scenarios
@@ -75,15 +73,15 @@ As a student, I want a Pomodoro timer and progress overview so I can structure s
 1. **Given** I start a Pomodoro session, **when** its configured interval completes, **then** the application indicates the session state and lets me continue my routine.
 2. **Given** I have completed study or exam activity, **when** I open Overview or History, **then** I can see available recent activity and progress summaries.
 
-### P2 — Launch and package the desktop app
+### P2 — Download, run, and install Study Hub
 
-As a student, I want clear desktop setup and launcher downloads so I can run or package Study Hub on Windows.
+As a student, I want to download the source, run Study Hub in VS Code, and install it as a PWA from a supported browser.
 
 **Acceptance scenarios**
 
-1. **Given** I select a Desktop download, **when** the download starts, **then** a usable file with the displayed filename is saved.
-2. **Given** I use the setup or launcher script in the project folder, **when** required prerequisites are available, **then** it prepares or starts the application and reports errors instead of claiming success when it fails.
-3. **Given** I build the Windows application, **when** packaging completes, **then** the output location and generated artifacts are identified.
+1. **Given** I use the project download link, **when** the download completes, **then** I can extract the source and open the project in VS Code.
+2. **Given** I follow the setup instructions, **when** dependencies are installed and the preview server is running, **then** I can open Study Hub locally.
+3. **Given** I use a supported browser over HTTPS or localhost, **when** I install Study Hub, **then** it opens in a standalone app window and its cached app shell is available offline.
 
 ## Functional Requirements
 
@@ -95,8 +93,8 @@ As a student, I want clear desktop setup and launcher downloads so I can run or 
 - **REQ-006**: The product MUST provide exam submission, scoring, and review feedback, and make completed attempts available in History.
 - **REQ-007**: The product MUST provide a Pomodoro timer for structuring study sessions.
 - **REQ-008**: The product MUST provide a History area for past exam attempts, saved exams, and Clutch Notes.
-- **REQ-009**: The product MUST provide understandable setup, launcher, and Windows packaging guidance for the supported desktop workflow.
-- **REQ-010**: Each Desktop download action MUST save the requested script under its displayed filename without prematurely invalidating the download.
+- **REQ-009**: The product MUST provide a source download and clear instructions for opening and running the project in VS Code.
+- **REQ-010**: The product MUST provide an installable PWA experience with a valid manifest, application icons, a service worker, and offline access to the cached app shell.
 - **REQ-011**: The product MUST communicate relevant local processing, offline limitations, and external connectivity requirements to the user.
 - **REQ-012**: The product MUST provide user-facing errors when a supported operation cannot complete, rather than presenting a failed operation as successful.
 
@@ -122,14 +120,14 @@ As a student, I want clear desktop setup and launcher downloads so I can run or 
 - **SC-001**: A student can locate today's classes and open tasks from the Overview in under one minute after adding sample records.
 - **SC-002**: A student can create and reopen a Clutch Note from supported sample material without losing the saved result after restarting the app.
 - **SC-003**: A student can complete a practice exam and locate its score and feedback in History.
-- **SC-004**: All displayed Desktop script download actions save the requested filename successfully in a supported browser.
+- **SC-004**: A user can download the project source, run the production preview, and install the PWA in a supported browser.
 - **SC-005**: At least 90% of first-time test users can complete the core flow—add a class, add a task, create a study resource, and start a practice exam—without external assistance.
 - **SC-006**: In a prepared offline environment, users can access local schedule, task, saved-study-material, history, and timer workflows without an internet connection.
 
 ## Assumptions and Boundaries
 
-- The short description and user problem statement are inferred from the current README and product metadata and should be confirmed by the team.
+- The product description and user problem statement are based on the current Study Hub features and should be confirmed by the team.
 - The team list is reproduced as supplied.
 - Existing app features define the initial product scope; this PRD does not introduce new integrations, user accounts, cloud synchronization, or cross-device data sharing.
-- Offline availability depends on required setup, cached dependencies, local model assets, and the particular feature being used. This PRD does not claim every AI or external-service feature works fully offline.
-- This checkout contains one root application package and does not currently declare an npm workspace or separate app packages. The download behavior is centralized in a shared helper used by the Desktop panel and modal.
+- Offline availability depends on the cached app shell, required local model assets, and the particular feature being used. This PRD does not claim every AI or external-service feature works fully offline.
+- The repository uses an npm workspace with the Study Hub application under `apps/study-hub/`.

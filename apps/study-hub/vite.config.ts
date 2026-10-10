@@ -17,11 +17,7 @@ export default defineConfig(() => {
       // Do not modify—file watching is disabled to prevent flickering during agent edits.
       hmr: process.env.DISABLE_HMR !== 'true',
       // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      // Ignore dist-electron so electron-builder can rename its extraction dir on Windows.
-      watch:
-        process.env.DISABLE_HMR === 'true'
-          ? null
-          : { ignored: ['**/dist-electron/**'] },
+      watch: process.env.DISABLE_HMR === 'true' ? null : undefined,
     },
   };
 });

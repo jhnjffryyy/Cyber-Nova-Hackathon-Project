@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { AnimatePresence, MotionConfig, motion } from 'motion/react';
-import { Minus, Square, X } from 'lucide-react';
+import { X } from 'lucide-react';
 import { Course, Exam, ExamAttempt, Cheatsheet, Task } from './types';
 import {
   getStoredCourses,
@@ -13,8 +13,6 @@ import {
   saveStoredCheatsheets,
   getStoredTasks,
   saveStoredTasks,
-  getStoredDesktopFrame,
-  saveStoredDesktopFrame,
   getStoredStudentProfile,
   saveStoredStudentProfile,
   DATA_STORAGE_KEYS,
@@ -32,7 +30,6 @@ import { ExamSimView } from './components/ExamSimView';
 import { HistoryView } from './components/HistoryView';
 import { PomodoroView } from './components/PomodoroView';
 import { DesktopExeView } from './components/DesktopExeView';
-import { DesktopExeModal } from './components/DesktopExeModal';
 import { BackupModal } from './components/BackupModal';
 import { ProfileModal } from './components/ProfileModal';
 
@@ -47,7 +44,6 @@ export default function App() {
   const [attempts, setAttempts] = useState<ExamAttempt[]>(getStoredAttempts);
   const [cheatsheets, setCheatsheets] = useState<Cheatsheet[]>(getStoredCheatsheets);
   const [tasks, setTasks] = useState<Task[]>(getStoredTasks);
-  const [isDesktopFrame, setIsDesktopFrame] = useState<boolean>(getStoredDesktopFrame);
   const [{ name: studentName, program: programName }, setProfile] = useState<{
     name: string;
     program: string;
@@ -57,7 +53,6 @@ export default function App() {
   const pomodoro = usePomodoro();
 
   // Modals state
-  const [isDesktopModalOpen, setIsDesktopModalOpen] = useState(false);
   const [isBackupModalOpen, setIsBackupModalOpen] = useState(false);
   const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
@@ -87,11 +82,6 @@ export default function App() {
     const t = setTimeout(() => pomodoro.dismissToast(), 6000);
     return () => clearTimeout(t);
   }, [pomodoro.toast]);
-
-  const handleToggleDesktopFrame = (enabled: boolean) => {
-    setIsDesktopFrame(enabled);
-    saveStoredDesktopFrame(enabled);
-  };
 
   const handleUpdateProfile = (name: string, program: string) => {
     setProfile({ name, program });
@@ -213,44 +203,6 @@ export default function App() {
           Skip to content
         </a>
 
-        {/* Optional Simulated Native Windows 11 Title Bar */}
-        {isDesktopFrame && (
-          <div className="h-8 bg-[#0f1211] text-[#eceeec] flex items-center justify-between px-3 text-xs select-none z-50">
-            <div className="flex items-center gap-2">
-              <img src="./icon.svg" alt="" className="w-4 h-4" />
-              <span className="font-semibold">
-                Study Hub — Windows Standalone Desktop Edition
-              </span>
-            </div>
-            <div className="flex items-center">
-              <button
-                type="button"
-                aria-label="Minimize"
-                onClick={() => alert('Simulated Windows Minimize: In actual .EXE this minimizes to taskbar')}
-                className="w-10 h-8 flex items-center justify-center hover:bg-white/10 transition-[background-color] duration-150"
-              >
-                <Minus className="w-3.5 h-3.5" />
-              </button>
-              <button
-                type="button"
-                aria-label="Maximize"
-                onClick={() => alert('Simulated Windows Maximize: In actual .EXE this toggles fullscreen')}
-                className="w-10 h-8 flex items-center justify-center hover:bg-white/10 transition-[background-color] duration-150"
-              >
-                <Square className="w-3 h-3" />
-              </button>
-              <button
-                type="button"
-                aria-label="Hide desktop title bar"
-                onClick={() => handleToggleDesktopFrame(false)}
-                className="w-10 h-8 flex items-center justify-center hover:bg-danger hover:text-white transition-[background-color] duration-150"
-              >
-                <X className="w-3.5 h-3.5" />
-              </button>
-            </div>
-          </div>
-        )}
-
         {/* Main Container */}
         <div className="flex-1 flex min-w-0">
           <Sidebar
@@ -271,7 +223,6 @@ export default function App() {
               searchQuery={searchQuery}
               setSearchQuery={setSearchQuery}
               onOpenMenu={() => setMobileNavOpen(true)}
-              onOpenDesktopModal={() => setIsDesktopModalOpen(true)}
             />
 
             <main id="main" tabIndex={-1} className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8 py-6 lg:py-8 flex-1 focus:outline-none">
@@ -359,11 +310,7 @@ export default function App() {
                 {activeTab === 'pomodoro' && <PomodoroView pomodoro={pomodoro} />}
 
                 {activeTab === 'desktop' && (
-                  <DesktopExeView
-                    isDesktopFrame={isDesktopFrame}
-                    setIsDesktopFrame={handleToggleDesktopFrame}
-                    onOpenModelModal={() => {}}
-                  />
+                  <DesktopExeView />
                 )}
               </div>
             </main>
@@ -397,14 +344,6 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Windows .EXE / Desktop Launcher Modal */}
-        <DesktopExeModal
-          isOpen={isDesktopModalOpen}
-          onClose={() => setIsDesktopModalOpen(false)}
-          isDesktopFrame={isDesktopFrame}
-          setIsDesktopFrame={handleToggleDesktopFrame}
-        />
 
         {/* Data Backup Modal */}
         <BackupModal

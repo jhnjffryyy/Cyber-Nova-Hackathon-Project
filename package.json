@@ -10,6 +10,6 @@
     "build": "npm run build --workspace study-hub",
     "lint": "npm run lint --workspace study-hub",
     "test": "npm run test --workspace study-hub",
-    "build:exe": "npm run build:exe --workspace study-hub"
+    "preview": "npm run preview --workspace study-hub"
   }
 }
