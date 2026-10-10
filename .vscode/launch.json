@@ -6,7 +6,7 @@
       "request": "launch",
       "name": "Launch StudyFlow in Edge (Offline App Mode)",
       "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}",
+      "webRoot": "${workspaceFolder}/apps/study-hub",
       "preLaunchTask": "npm: dev"
     },
     {
@@ -14,7 +14,7 @@
       "request": "launch",
       "name": "Launch StudyFlow in Chrome (Offline App Mode)",
       "url": "http://localhost:3000",
-      "webRoot": "${workspaceFolder}",
+      "webRoot": "${workspaceFolder}/apps/study-hub",
       "preLaunchTask": "npm: dev"
     }
   ]
