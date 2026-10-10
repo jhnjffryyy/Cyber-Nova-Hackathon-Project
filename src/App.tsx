@@ -17,6 +17,7 @@ import {
   saveStoredDesktopFrame,
   getStoredStudentProfile,
   saveStoredStudentProfile,
+  DATA_STORAGE_KEYS,
 } from './lib/storage';
 import { usePomodoro } from './lib/usePomodoro';
 import { useHashTab } from './lib/useHashTab';
@@ -187,6 +188,17 @@ export default function App() {
     setProfile(getStoredStudentProfile());
   };
 
+  // Refresh data when another window/tab writes to storage.
+  useEffect(() => {
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === null || DATA_STORAGE_KEYS.includes(e.key)) {
+        handleRefreshAllData();
+      }
+    };
+    window.addEventListener('storage', onStorage);
+    return () => window.removeEventListener('storage', onStorage);
+  }, []);
+
   return (
     <MotionConfig reducedMotion="user">
       <div className="min-h-dvh bg-canvas text-ink flex flex-col font-sans">
@@ -205,7 +217,7 @@ export default function App() {
         {isDesktopFrame && (
           <div className="h-8 bg-[#0f1211] text-[#eceeec] flex items-center justify-between px-3 text-xs select-none z-50">
             <div className="flex items-center gap-2">
-              <img src="/icon.svg" alt="" className="w-4 h-4" />
+              <img src="./icon.svg" alt="" className="w-4 h-4" />
               <span className="font-semibold">
                 Study Hub — Windows Standalone Desktop Edition
               </span>

@@ -46,12 +46,12 @@ Start-StudyFlow.bat
 - Opens StudyFlow in native standalone application mode (`--app=http://localhost:3000`) without browser navigation bars or tabs.
 - Full offline persistence via LocalStorage / IndexedDB.
 
-### Method 2: Compile to Genuine Windows `StudyFlow.exe` (Electron Builder)
-We have preconfigured `electron/main.cjs` and the build settings in `package.json`.
+### Method 2: Compile to Genuine Windows `Study Hub.exe` (Electron Builder)
+We have preconfigured `electron/main.cjs` and the build settings in `package.json`. Electron and electron-builder are already dev dependencies.
 
-1. Open your terminal in this directory and install Electron & electron-builder:
+1. Open your terminal in this directory and install dependencies:
    ```bash
-   npm install electron electron-builder --save-dev
+   npm install
    ```
 
 2. Run the build command:
@@ -60,9 +60,11 @@ We have preconfigured `electron/main.cjs` and the build settings in `package.jso
    ```
    *Or simply double-click:* `build-exe.bat`
 
-3. Your standalone executable will be created in:
+3. Your standalone executables will be created in `dist-electron/`:
    ```
-   dist-electron/StudyFlow Setup.exe  (or portable StudyFlow.exe)
+   dist-electron/Study-Hub-Setup-<version>.exe     (installer)
+   dist-electron/Study-Hub-Portable-<version>.exe  (portable)
+   dist-electron/win-unpacked/Study Hub.exe        (unpacked)
    ```
 
 ### Method 3: Convert `Start-StudyFlow.bat` to `StudyFlow.exe`

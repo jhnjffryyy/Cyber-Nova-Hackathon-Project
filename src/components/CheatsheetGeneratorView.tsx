@@ -408,18 +408,7 @@ export const CheatsheetGeneratorView: React.FC<CheatsheetGeneratorViewProps> = (
       </div>
 
       {/* Library + detail */}
-      {cheatsheets.length === 0 ? (
-        <EmptyState
-          icon={NotebookText}
-          title="No Clutch Notes yet"
-          description="Upload a PDF, image or text file, or paste notes, to create your first review sheet."
-          action={
-            <Button size="sm" onClick={openGenerator}>
-              Create Clutch Notes
-            </Button>
-          }
-        />
-      ) : (
+      {cheatsheets.length > 0 && (
         <div className="grid gap-6 lg:grid-cols-[320px_minmax(0,1fr)] items-start">
           {/* Library list */}
           <Card padding="none">

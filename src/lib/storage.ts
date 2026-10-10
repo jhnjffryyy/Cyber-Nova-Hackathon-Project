@@ -16,6 +16,17 @@ const STORAGE_KEYS = {
   POMODORO_SETTINGS: 'studyflow_pomodoro_settings_v1',
 };
 
+// Keys whose changes should trigger a data refresh in other open windows/tabs.
+export const DATA_STORAGE_KEYS = [
+  STORAGE_KEYS.COURSES,
+  STORAGE_KEYS.EXAMS,
+  STORAGE_KEYS.ATTEMPTS,
+  STORAGE_KEYS.CHEATSHEETS,
+  STORAGE_KEYS.TASKS,
+  STORAGE_KEYS.STUDENT_NAME,
+  STORAGE_KEYS.PROGRAM_NAME,
+];
+
 // No dummy data by default - clean slate for user's own courses
 export const getStoredCourses = (): Course[] => {
   try {

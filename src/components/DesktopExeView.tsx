@@ -1,16 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
-  Monitor,
   Download,
   Terminal,
   Package,
   Layers,
   CheckCircle2,
   Copy,
-  ShieldCheck,
   FileCode,
   PlayCircle,
-  Cpu,
   Check,
   Laptop,
   WifiOff,
@@ -21,8 +18,6 @@ import {
   POWERSHELL_LAUNCHER_SCRIPT,
   triggerDownload,
 } from '../lib/desktop-export';
-import { qwenLLM } from '../lib/local-llm';
-import { HardwareInfo } from '../types';
 import { Badge, Button, Card, CardHeader, IconButton, PageHeader, SegmentedControl } from './ui';
 
 interface DesktopExeViewProps {
@@ -40,13 +35,8 @@ export const DesktopExeView: React.FC<DesktopExeViewProps> = ({
   isDesktopFrame,
   setIsDesktopFrame,
 }) => {
-  const [hardware, setHardware] = useState<HardwareInfo | null>(null);
   const [copiedCode, setCopiedCode] = useState<string | null>(null);
   const [viewTab, setViewTab] = useState<'vscode' | 'exe' | 'scripts'>('vscode');
-
-  useEffect(() => {
-    qwenLLM.detectHardware().then(setHardware);
-  }, []);
 
   const handleCopy = (code: string, id: string) => {
     navigator.clipboard.writeText(code);
@@ -368,41 +358,6 @@ export const DesktopExeView: React.FC<DesktopExeViewProps> = ({
           </div>
         </Card>
       )}
-
-      {/* Diagnostics */}
-      <Card className="mt-6">
-        <CardHeader title="Offline diagnostics" icon={Cpu} />
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <div className="rounded-control bg-subtle p-3">
-            <span className="text-xs text-ink-3 block">Storage</span>
-            <span className="text-sm font-medium text-ink mt-0.5 block">
-              LocalStorage / CacheStorage
-            </span>
-            <span className="text-xs text-success mt-0.5 block">0% cloud reliance</span>
-          </div>
-          <div className="rounded-control bg-subtle p-3">
-            <span className="text-xs text-ink-3 block">GPU acceleration</span>
-            <span className="text-sm font-medium text-ink mt-0.5 block">
-              {hardware?.hasWebGPU ? 'WebGPU enabled' : 'Standard renderer'}
-            </span>
-            <span className="text-xs text-ink-3 mt-0.5 block">
-              {hardware?.adapterName || 'Integrated graphics'}
-            </span>
-          </div>
-          <div className="rounded-control bg-subtle p-3">
-            <span className="text-xs text-ink-3 block">AI engine</span>
-            <span className="text-sm font-medium text-ink mt-0.5 block">Local engine</span>
-            <span className="text-xs text-success mt-0.5 block">Runs fully offline</span>
-          </div>
-        </div>
-        <div className="flex items-center gap-2.5 mt-4 text-[13px] text-ink-3">
-          <ShieldCheck className="w-4 h-4 text-success shrink-0" aria-hidden />
-          <span>
-            <Monitor className="w-3.5 h-3.5 inline mr-1 text-ink-3" aria-hidden />
-            Everything works without internet or cloud accounts.
-          </span>
-        </div>
-      </Card>
     </div>
   );
 };
